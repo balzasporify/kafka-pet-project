@@ -4,7 +4,10 @@ import com.balza.todoapp.dto.CreateTaskRequestDto;
 import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.service.TaskService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,18 +24,20 @@ public class TaskController {
     }
 
     @PostMapping
-    public TaskResponseDto createTask(@RequestBody CreateTaskRequestDto taskToCreate) {
-        return taskService.createTask(taskToCreate);
+    public ResponseEntity<TaskResponseDto> createTask(@Valid @RequestBody CreateTaskRequestDto taskToCreate) {
+        TaskResponseDto createdTask = taskService.createTask(taskToCreate);
+        return new ResponseEntity<>(createdTask, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public TaskResponseDto updateTask(@PathVariable Long id, @RequestBody UpdateTaskRequestDto taskToUpdate) {
+    public TaskResponseDto updateTask(@PathVariable Long id, @Valid @RequestBody UpdateTaskRequestDto taskToUpdate) {
         return taskService.updateTask(id, taskToUpdate);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteTask(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
         taskService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
