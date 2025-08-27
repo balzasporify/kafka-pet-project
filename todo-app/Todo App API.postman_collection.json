@@ -17,7 +17,97 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 1\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00\",\r\n    \"status\": \"DONE\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 1\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/tasks",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create task 2",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"title\": \"Test Task 2\",\r\n    \"description\": \"Test Description 2\",\r\n    \"dueDate\": \"2025-09-15T12:00:00Z\",\r\n    \"status\": \"IN_PROGRESS\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/tasks",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create task 3",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"title\": \"Test Task 3\",\r\n    \"description\": \"Test Description 3\",\r\n    \"dueDate\": \"2025-09-12T14:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseURL}}/api/tasks",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create task 4",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"title\": \"Test Task 4\",\r\n    \"description\": \"Test Description 4\",\r\n    \"dueDate\": \"2025-09-20T16:00:00Z\",\r\n    \"status\": \"TODO\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -71,6 +161,64 @@
 			"response": []
 		},
 		{
+			"name": "Get All Tasks (Sorted by Date)",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/tasks?sortBy=dueDate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"tasks"
+					],
+					"query": [
+						{
+							"key": "sortBy",
+							"value": "dueDate"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Tasks by Status",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/api/tasks?status=DONE",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"tasks"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "DONE"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get Task by ID",
 			"protocolProfileBehavior": {
 				"disableBodyPruning": true
@@ -114,7 +262,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 1(UPDATED)\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00\",\r\n    \"status\": \"DONE\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 1(UPDATED)\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -161,154 +309,6 @@
 						"api",
 						"tasks",
 						"1"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create task 2",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 2\",\r\n    \"description\": \"Test Description 2\",\r\n    \"dueDate\": \"2025-09-15T12:00:00\",\r\n    \"status\": \"IN_PROGRESS\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{baseURL}}/api/tasks",
-					"host": [
-						"{{baseURL}}"
-					],
-					"path": [
-						"api",
-						"tasks"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create task 3",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 3\",\r\n    \"description\": \"Test Description 3\",\r\n    \"dueDate\": \"2025-09-12T14:00:00\",\r\n    \"status\": \"DONE\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{baseURL}}/api/tasks",
-					"host": [
-						"{{baseURL}}"
-					],
-					"path": [
-						"api",
-						"tasks"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create task 4",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 4\",\r\n    \"description\": \"Test Description 4\",\r\n    \"dueDate\": \"2025-09-20T16:00:00\",\r\n    \"status\": \"TODO\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{baseURL}}/api/tasks",
-					"host": [
-						"{{baseURL}}"
-					],
-					"path": [
-						"api",
-						"tasks"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get Tasks by Status",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "http://localhost:8080/api/tasks?status=DONE",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"api",
-						"tasks"
-					],
-					"query": [
-						{
-							"key": "status",
-							"value": "DONE"
-						}
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get All Tasks (Sorted by Date)",
-			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "http://localhost:8080/api/tasks?sortBy=dueDate",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"api",
-						"tasks"
-					],
-					"query": [
-						{
-							"key": "sortBy",
-							"value": "dueDate"
-						}
 					]
 				}
 			},

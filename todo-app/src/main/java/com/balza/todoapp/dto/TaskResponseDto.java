@@ -1,12 +1,12 @@
 package com.balza.todoapp.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record TaskResponseDto(
         Long id,
         String title,
         String description,
-        LocalDateTime dueDate,
+        Instant dueDate,
         String status
 ) {
 }

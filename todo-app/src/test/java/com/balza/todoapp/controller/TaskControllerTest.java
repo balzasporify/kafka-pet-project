@@ -13,6 +13,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -35,11 +36,13 @@ class TaskControllerTest {
     @MockBean
     private TaskService taskService;
 
+    private final Instant testInstant = Instant.parse("2025-09-10T10:00:00Z");
+
     @Test
     @DisplayName("POST /api/tasks - Должен создать задачу и вернуть 201 Created")
     void createTaskWhenValidRequestThenReturn201() throws Exception {
-        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Description", null, "TODO");
-        TaskResponseDto responseDto = new TaskResponseDto(1L, "New Task", "Description", null, "TODO");
+        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Description", testInstant, "TODO");
+        TaskResponseDto responseDto = new TaskResponseDto(1L, "New Task", "Description", testInstant, "TODO");
 
         when(taskService.createTask(any(CreateTaskRequestDto.class))).thenReturn(responseDto);
 
@@ -66,7 +69,7 @@ class TaskControllerTest {
     @DisplayName("GET /api/tasks/{id} - Должен вернуть задачу, если она существует")
     void getTaskByIdWhenExistsShouldReturnTask() throws Exception {
         long taskId = 1L;
-        TaskResponseDto responseDto = new TaskResponseDto(taskId, "Test Task", null, null, "TODO");
+        TaskResponseDto responseDto = new TaskResponseDto(taskId, "Test Task", "Desc", testInstant, "TODO");
         when(taskService.getById(taskId)).thenReturn(responseDto);
 
         mockMvc.perform(get("/api/tasks/{id}", taskId))
@@ -89,8 +92,8 @@ class TaskControllerTest {
     @DisplayName("GET /api/tasks - Должен вернуть список всех задач")
     void getAllTasksShouldReturnListOfTasks() throws Exception {
         List<TaskResponseDto> tasks = List.of(
-                new TaskResponseDto(1L, "Task 1", null, null, "TODO"),
-                new TaskResponseDto(2L, "Task 2", null, null, "DONE")
+                new TaskResponseDto(1L, "Task 1", null, testInstant, "TODO"),
+                new TaskResponseDto(2L, "Task 2", null, testInstant, "DONE")
         );
         when(taskService.findAll()).thenReturn(tasks);
 
@@ -104,7 +107,6 @@ class TaskControllerTest {
     @DisplayName("DELETE /api/tasks/{id} - Должен вернуть 204 No Content при успешном удалении")
     void deleteTaskWhenExistsShouldReturn204() throws Exception {
         long taskId = 1L;
-        // Для void методов моки не настраиваются через when/thenReturn
 
         mockMvc.perform(delete("/api/tasks/{id}", taskId))
                 .andExpect(status().isNoContent());
