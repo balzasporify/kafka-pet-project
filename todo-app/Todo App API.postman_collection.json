@@ -318,8 +318,8 @@
 	"variable": [
 		{
 			"key": "baseURL",
-			"value": "",
-			"type": "default"
+			"value": "http://localhost:8080",
+			"type": "string"
 		}
 	]
 }
