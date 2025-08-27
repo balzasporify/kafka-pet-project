@@ -3,7 +3,6 @@ package com.balza.todoapp.controller;
 import com.balza.todoapp.dto.CreateTaskRequestDto;
 import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
-import com.balza.todoapp.exception.TaskNotFoundException;
 import com.balza.todoapp.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
