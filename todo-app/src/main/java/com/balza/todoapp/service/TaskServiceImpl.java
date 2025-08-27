@@ -12,7 +12,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,13 +36,17 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Optional<TaskResponseDto> findById(Long id) {
+    public TaskResponseDto getById(Long id) {
         return taskRepository.findById(id)
-                .map(taskMapper::toDto);
+                .map(taskMapper::toDto)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
     }
 
     @Override
     public void deleteById(Long id) {
+        if (!taskRepository.existsById(id)) {
+            throw new TaskNotFoundException("Task not found with id: " + id);
+        }
         taskRepository.deleteById(id);
     }
 

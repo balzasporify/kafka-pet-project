@@ -5,12 +5,11 @@ import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface TaskService {
     TaskResponseDto createTask(CreateTaskRequestDto requestDto);
     TaskResponseDto updateTask(Long id, UpdateTaskRequestDto requestDto);
-    Optional<TaskResponseDto> findById(Long id);
+    TaskResponseDto getById(Long id);
     void deleteById(Long id);
     List<TaskResponseDto> findAll();
     List<TaskResponseDto> findByStatus(String status);

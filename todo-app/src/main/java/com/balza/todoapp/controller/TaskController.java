@@ -18,8 +18,7 @@ public class TaskController {
 
     @GetMapping("/{id}")
     public TaskResponseDto getTaskById(@PathVariable Long id) {
-        return taskService.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
+        return taskService.getById(id);
     }
 
     @PostMapping
