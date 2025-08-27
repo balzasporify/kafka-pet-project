@@ -1,6 +1,9 @@
 package com.balza.todoapp.controller;
 
-import com.balza.todoapp.entity.Task;
+import com.balza.todoapp.dto.CreateTaskRequestDto;
+import com.balza.todoapp.dto.TaskResponseDto;
+import com.balza.todoapp.dto.UpdateTaskRequestDto;
+import com.balza.todoapp.exception.TaskNotFoundException;
 import com.balza.todoapp.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,19 +17,19 @@ public class TaskController {
     private final TaskService taskService;
 
     @GetMapping("/{id}")
-    public Task getTaskById(@PathVariable Long id) {
+    public TaskResponseDto getTaskById(@PathVariable Long id) {
         return taskService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
     }
 
     @PostMapping
-    public Task createTask(@RequestBody Task task) {
-        return taskService.createTask(task);
+    public TaskResponseDto createTask(@RequestBody CreateTaskRequestDto taskToCreate) {
+        return taskService.createTask(taskToCreate);
     }
 
     @PutMapping("/{id}")
-    public Task updateTask(@PathVariable Long id, @RequestBody Task task) {
-        return taskService.updateTask(id, task);
+    public TaskResponseDto updateTask(@PathVariable Long id, @RequestBody UpdateTaskRequestDto taskToUpdate) {
+        return taskService.updateTask(id, taskToUpdate);
     }
 
     @DeleteMapping("/{id}")
@@ -35,7 +38,7 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<Task> getAllTasks(
+    public List<TaskResponseDto> getAllTasks(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String sortBy) {
         if (status != null) {

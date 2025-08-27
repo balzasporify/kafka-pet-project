@@ -1,16 +1,18 @@
 package com.balza.todoapp.service;
 
-import com.balza.todoapp.entity.Task;
+import com.balza.todoapp.dto.CreateTaskRequestDto;
+import com.balza.todoapp.dto.TaskResponseDto;
+import com.balza.todoapp.dto.UpdateTaskRequestDto;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface TaskService {
-    Task createTask(Task task);
-    Task updateTask(Long id, Task task);
-    Optional<Task> findById(Long id);
+    TaskResponseDto createTask(CreateTaskRequestDto requestDto);
+    TaskResponseDto updateTask(Long id, UpdateTaskRequestDto requestDto);
+    Optional<TaskResponseDto> findById(Long id);
     void deleteById(Long id);
-    List<Task> findAll();
-    List<Task> findByStatus(String status);
-    List<Task> findAllAndSort(String sortBy);
+    List<TaskResponseDto> findAll();
+    List<TaskResponseDto> findByStatus(String status);
+    List<TaskResponseDto> findAllAndSort(String sortBy);
 }

@@ -1,6 +1,11 @@
 package com.balza.todoapp.service;
 
+import com.balza.todoapp.dto.CreateTaskRequestDto;
+import com.balza.todoapp.dto.TaskResponseDto;
+import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.entity.Task;
+import com.balza.todoapp.exception.TaskNotFoundException;
+import com.balza.todoapp.mapper.TaskMapper;
 import com.balza.todoapp.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -13,27 +18,28 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
+    private final TaskMapper taskMapper;
 
     @Override
-    public Task createTask(Task task) {
-        return taskRepository.save(task);
+    public TaskResponseDto createTask(CreateTaskRequestDto requestDto) {
+        Task taskToSave = taskMapper.toEntity(requestDto);
+        Task savedTask = taskRepository.save(taskToSave);
+        return taskMapper.toDto(savedTask);
     }
 
     @Override
-    public Task updateTask(Long id, Task task) {
-        Task existingTask = taskRepository.findById(id).orElseThrow(()-> new RuntimeException("Task not found with id: " + id));
-
-        existingTask.setTitle(task.getTitle());
-        existingTask.setDescription(task.getDescription());
-        existingTask.setDueDate(task.getDueDate());
-        existingTask.setStatus(task.getStatus());
-
-        return taskRepository.save(existingTask);
+    public TaskResponseDto updateTask(Long id, UpdateTaskRequestDto requestDto) {
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found with id: " + id));
+        taskMapper.updateEntityFromDto(requestDto, existingTask);
+        Task savedTask = taskRepository.save(existingTask);
+        return taskMapper.toDto(savedTask);
     }
 
     @Override
-    public Optional<Task> findById(Long id) {
-        return taskRepository.findById(id);
+    public Optional<TaskResponseDto> findById(Long id) {
+        return taskRepository.findById(id)
+                .map(taskMapper::toDto);
     }
 
     @Override
@@ -42,18 +48,18 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<Task> findAll() {
-        return taskRepository.findAll();
+    public List<TaskResponseDto> findAll() {
+        return taskMapper.toDtoList(taskRepository.findAll());
     }
 
     @Override
-    public List<Task> findByStatus(String status) {
-        return taskRepository.findByStatus(status);
+    public List<TaskResponseDto> findByStatus(String status) {
+        return taskMapper.toDtoList(taskRepository.findByStatus(status));
     }
 
     @Override
-    public List<Task> findAllAndSort(String sortBy) {
+    public List<TaskResponseDto> findAllAndSort(String sortBy) {
         Sort sort = Sort.by(sortBy);
-        return taskRepository.findAll(sort);
+        return taskMapper.toDtoList(taskRepository.findAll(sort));
     }
 }
