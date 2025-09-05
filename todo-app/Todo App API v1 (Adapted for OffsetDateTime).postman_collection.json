@@ -1,23 +1,20 @@
 {
 	"info": {
-		"_postman_id": "7d8176c8-dc56-4ef5-91eb-bf82e9671360",
-		"name": "Todo App API",
+		"_postman_id": "1a85990d-7642-423d-a856-e50e8ed2e634",
+		"name": "Todo App API v1 (Adapted for OffsetDateTime)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "47969471",
-		"_collection_link": "https://s-team-269442.postman.co/workspace/Team-Workspace~c78fa2f7-6d60-4624-8ae1-b3407f523ac1/collection/47969471-7d8176c8-dc56-4ef5-91eb-bf82e9671360?action=share&source=collection_link&creator=47969471"
+		"_collection_link": "https://s-team-269442.postman.co/workspace/Team-Workspace~c78fa2f7-6d60-4624-8ae1-b3407f523ac1/collection/47969471-1a85990d-7642-423d-a856-e50e8ed2e634?action=share&source=collection_link&creator=47969471"
 	},
 	"item": [
 		{
 			"name": "Create task 1",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 1\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 1\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -25,12 +22,13 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					]
 				}
@@ -40,14 +38,11 @@
 		{
 			"name": "Create task 2",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 2\",\r\n    \"description\": \"Test Description 2\",\r\n    \"dueDate\": \"2025-09-15T12:00:00Z\",\r\n    \"status\": \"IN_PROGRESS\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 2\",\r\n    \"description\": \"Test Description 2\",\r\n    \"dueDate\": \"2025-09-15T12:00:00+03:00\",\r\n    \"status\": \"IN_PROGRESS\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -55,12 +50,13 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					]
 				}
@@ -70,14 +66,11 @@
 		{
 			"name": "Create task 3",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 3\",\r\n    \"description\": \"Test Description 3\",\r\n    \"dueDate\": \"2025-09-12T14:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 3\",\r\n    \"description\": \"Test Description 3\",\r\n    \"dueDate\": \"2025-09-12T14:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -85,12 +78,13 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					]
 				}
@@ -100,14 +94,11 @@
 		{
 			"name": "Create task 4",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 4\",\r\n    \"description\": \"Test Description 4\",\r\n    \"dueDate\": \"2025-09-20T16:00:00Z\",\r\n    \"status\": \"TODO\"\r\n}",
+					"raw": "{\r\n    \"title\": \"Test Task 4\",\r\n    \"description\": \"Test Description 4\",\r\n    \"dueDate\": \"2025-09-20T16:00:00+03:00\",\r\n    \"status\": \"TODO\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -115,12 +106,13 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					]
 				}
@@ -129,31 +121,17 @@
 		},
 		{
 			"name": "Get All Tasks",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					]
 				}
@@ -163,20 +141,16 @@
 		{
 			"name": "Get All Tasks (Sorted by Date)",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:8080/api/tasks?sortBy=dueDate",
-					"protocol": "http",
+					"raw": "{{baseURL}}/api/v1/tasks?sortBy=dueDate",
 					"host": [
-						"localhost"
+						"{{baseURL}}"
 					],
-					"port": "8080",
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					],
 					"query": [
@@ -192,20 +166,16 @@
 		{
 			"name": "Get Tasks by Status",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:8080/api/tasks?status=DONE",
-					"protocol": "http",
+					"raw": "{{baseURL}}/api/v1/tasks?status=DONE",
 					"host": [
-						"localhost"
+						"{{baseURL}}"
 					],
-					"port": "8080",
 					"path": [
 						"api",
+						"v1",
 						"tasks"
 					],
 					"query": [
@@ -220,31 +190,17 @@
 		},
 		{
 			"name": "Get Task by ID",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks/1",
+					"raw": "{{baseURL}}/api/v1/tasks/1",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks",
 						"1"
 					]
@@ -255,14 +211,11 @@
 		{
 			"name": "Update Task",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "PUT",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"title\": \"Test Task 1(UPDATED)\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00Z\",\r\n    \"status\": \"DONE\"\r\n}",
+					"raw": "{\r\n    \"id\": 1,\r\n    \"title\": \"Test Task 1(UPDATED)\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -270,14 +223,41 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks/1",
+					"raw": "{{baseURL}}/api/v1/tasks",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
+						"tasks"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Task Status",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseURL}}/api/v1/tasks/1/status?status=DONE",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"v1",
 						"tasks",
-						"1"
+						"1",
+						"status"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "DONE"
+						}
 					]
 				}
 			},
@@ -286,27 +266,16 @@
 		{
 			"name": "Delete Task",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "DELETE",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
 				"url": {
-					"raw": "{{baseURL}}/api/tasks/1",
+					"raw": "{{baseURL}}/api/v1/tasks/1",
 					"host": [
 						"{{baseURL}}"
 					],
 					"path": [
 						"api",
+						"v1",
 						"tasks",
 						"1"
 					]

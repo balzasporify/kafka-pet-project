@@ -6,19 +6,21 @@ import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.entity.Task;
 import com.balza.todoapp.exception.TaskNotFoundException;
 import com.balza.todoapp.mapper.TaskMapper;
+import com.balza.todoapp.model.Status;
 import com.balza.todoapp.repository.TaskRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,14 +40,14 @@ class TaskServiceImplTest {
     @InjectMocks
     private TaskServiceImpl taskService;
 
-    private final Instant testInstant = Instant.parse("2025-09-10T10:00:00Z");
+    private final OffsetDateTime testInstant = OffsetDateTime.parse("2025-09-10T10:00:00Z");
 
     @Test
     @DisplayName("Должен возвращать задачу по ID, если она существует")
     void getByIdWhenTaskExistsThenReturnsTask() {
         long taskId = 1L;
-        Task task = new Task(taskId, "Test Title", "Test Desc", testInstant, "TODO");
-        TaskResponseDto expectedDto = new TaskResponseDto(taskId, "Test Title", "Test Desc", testInstant, "TODO");
+        Task task = new Task(taskId, "Test Title", "Test Desc", testInstant, Status.TODO);
+        TaskResponseDto expectedDto = new TaskResponseDto(taskId, "Test Title", "Test Desc", testInstant, Status.TODO);
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
         when(taskMapper.toDto(task)).thenReturn(expectedDto);
@@ -71,10 +73,10 @@ class TaskServiceImplTest {
     @Test
     @DisplayName("Должен успешно создавать и возвращать новую задачу")
     void createTaskShouldSaveAndReturnTask() {
-        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Desc", testInstant, "TODO");
-        Task taskToSave = new Task(null, "New Task", "Desc", testInstant, "TODO");
-        Task savedTask = new Task(1L, "New Task", "Desc", testInstant, "TODO");
-        TaskResponseDto expectedDto = new TaskResponseDto(1L, "New Task", "Desc", testInstant, "TODO");
+        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Desc", testInstant, Status.TODO);
+        Task taskToSave = new Task(null, "New Task", "Desc", testInstant, Status.TODO);
+        Task savedTask = new Task(1L, "New Task", "Desc", testInstant, Status.TODO);
+        TaskResponseDto expectedDto = new TaskResponseDto(1L, "New Task", "Desc", testInstant, Status.TODO);
 
         when(taskMapper.toEntity(requestDto)).thenReturn(taskToSave);
         when(taskRepository.save(taskToSave)).thenReturn(savedTask);
@@ -90,115 +92,59 @@ class TaskServiceImplTest {
     @DisplayName("Должен успешно обновлять и возвращать задачу, если она существует")
     void updateTaskWhenTaskExistsThenUpdatesAndReturnsTask() {
         long taskId = 1L;
-        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto("Updated Title", "Updated Desc", testInstant, "DONE");
-        Task existingTask = new Task(taskId, "Old Title", "Old Desc", Instant.now(), "TODO");
+        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
+        Task existingTask = new Task(taskId, "Old Title", "Old Desc", OffsetDateTime.now(), Status.TODO);
+        Task savedTask = new Task(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
+        TaskResponseDto expectedDto = new TaskResponseDto(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
 
         when(taskRepository.findById(taskId)).thenReturn(Optional.of(existingTask));
-        when(taskRepository.save(existingTask)).thenReturn(existingTask);
-        when(taskMapper.toDto(existingTask)).thenReturn(new TaskResponseDto(taskId, "Updated Title", "Updated Desc", testInstant, "DONE"));
+        when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
+        when(taskMapper.toDto(savedTask)).thenReturn(expectedDto);
 
-        TaskResponseDto actualDto = taskService.updateTask(taskId, requestDto);
+        TaskResponseDto actualDto = taskService.updateTask(requestDto);
 
-        verify(taskMapper).updateEntityFromDto(requestDto, existingTask);
         verify(taskRepository).save(existingTask);
         assertThat(actualDto.title()).isEqualTo("Updated Title");
-        assertThat(actualDto.status()).isEqualTo("DONE");
+        assertThat(actualDto.status()).isEqualTo(Status.DONE);
     }
 
     @Test
     @DisplayName("Должен выбрасывать исключение TaskNotFoundException при попытке обновить несуществующую задачу")
     void updateTaskWhenTaskNotFoundThenThrowsException() {
         long taskId = 99L;
-        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto("Title", "Desc", testInstant, "TODO");
+        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(taskId, "Title", "Desc", testInstant, Status.TODO);
         when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
 
-        assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(taskId, requestDto));
+        assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(requestDto));
         verify(taskRepository).findById(taskId);
         verify(taskRepository, never()).save(any(Task.class));
     }
 
     @Test
-    @DisplayName("Должен вызывать метод deleteById, если задача существует")
-    void deleteByIdWhenTaskExistsThenDeletesTask() {
+    @DisplayName("Должен вызывать метод deleteById")
+    void deleteByIdShouldCallDelete() {
         long taskId = 1L;
-        when(taskRepository.existsById(taskId)).thenReturn(true);
         doNothing().when(taskRepository).deleteById(taskId);
-
         taskService.deleteById(taskId);
-
-        verify(taskRepository).existsById(taskId);
         verify(taskRepository).deleteById(taskId);
     }
 
     @Test
-    @DisplayName("Должен выбрасывать исключение TaskNotFoundException при попытке удалить несуществующую задачу")
-    void deleteByIdWhenTaskNotFoundThenThrowsException() {
-        long taskId = 99L;
-        when(taskRepository.existsById(taskId)).thenReturn(false);
+    @DisplayName("Должен возвращать страницу задач")
+    void getTasksShouldReturnPagedTasks() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Task task = new Task(1L, "Task 1", "d1", testInstant, Status.TODO);
+        Page<Task> taskPage = new PageImpl<>(Collections.singletonList(task), pageable, 1);
+        TaskResponseDto expectedDto = new TaskResponseDto(1L, "Task 1", "d1", testInstant, Status.TODO);
 
-        assertThrows(TaskNotFoundException.class, () -> taskService.deleteById(taskId));
-        verify(taskRepository).existsById(taskId);
-        verify(taskRepository, never()).deleteById(anyLong());
-    }
+        when(taskRepository.findAll(pageable)).thenReturn(taskPage);
+        when(taskMapper.toDto(task)).thenReturn(expectedDto);
 
-    @Test
-    @DisplayName("Должен возвращать список задач")
-    void findAllShouldReturnListOfTasks() {
-        List<Task> tasks = List.of(new Task(1L, "Task 1", "d1", testInstant, "TODO"));
-        List<TaskResponseDto> expectedDtos = List.of(new TaskResponseDto(1L, "Task 1", "d1", testInstant, "TODO"));
+        Page<TaskResponseDto> actualPage = taskService.getTasks(null, pageable);
 
-        when(taskRepository.findAll()).thenReturn(tasks);
-        when(taskMapper.toDtoList(tasks)).thenReturn(expectedDtos);
-
-        List<TaskResponseDto> actualDtos = taskService.findAll();
-
-        assertThat(actualDtos).isEqualTo(expectedDtos);
-    }
-
-    @Test
-    @DisplayName("Должен возвращать пустой список, если задач нет")
-    void findAllShouldReturnEmptyListWhenNoTasksExist() {
-        when(taskRepository.findAll()).thenReturn(Collections.emptyList());
-        when(taskMapper.toDtoList(Collections.emptyList())).thenReturn(Collections.emptyList());
-
-        List<TaskResponseDto> actualDtos = taskService.findAll();
-
-        assertThat(actualDtos).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Должен возвращать отфильтрованный по статусу список задач")
-    void findByStatusShouldReturnFilteredList() {
-        String status = "DONE";
-        List<Task> tasks = List.of(new Task(2L, "Task 2", "d2", testInstant, "DONE"));
-        List<TaskResponseDto> expectedDtos = List.of(new TaskResponseDto(2L, "Task 2", "d2", testInstant, "DONE"));
-
-        when(taskRepository.findByStatus(status)).thenReturn(tasks);
-        when(taskMapper.toDtoList(tasks)).thenReturn(expectedDtos);
-
-        List<TaskResponseDto> actualDtos = taskService.findByStatus(status);
-
-        assertThat(actualDtos).isEqualTo(expectedDtos);
-        verify(taskRepository).findByStatus(status);
-    }
-
-    @Test
-    @DisplayName("Должен возвращать отсортированный список задач")
-    void findAllAndSortShouldReturnSortedList() {
-        String sortByField = "dueDate";
-        List<Task> tasks = List.of(new Task());
-        List<TaskResponseDto> expectedDtos = List.of(new TaskResponseDto(1L, "T", "D", testInstant, "S"));
-
-        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
-
-        when(taskRepository.findAll(sortCaptor.capture())).thenReturn(tasks);
-        when(taskMapper.toDtoList(tasks)).thenReturn(expectedDtos);
-
-        List<TaskResponseDto> actualDtos = taskService.findAllAndSort(sortByField);
-
-        assertThat(actualDtos).isEqualTo(expectedDtos);
-
-        Sort capturedSort = sortCaptor.getValue();
-        assertThat(capturedSort.getOrderFor("dueDate")).isNotNull();
+        assertThat(actualPage.getContent()).hasSize(1);
+        assertThat(actualPage.getContent().get(0)).isEqualTo(expectedDto);
+        verify(taskRepository).findAll(pageable);
+        verify(taskMapper).toDto(task);
     }
 }
