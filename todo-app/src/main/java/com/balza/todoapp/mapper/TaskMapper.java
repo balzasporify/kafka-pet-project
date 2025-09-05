@@ -5,19 +5,24 @@ import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.entity.Task;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
 
 @Mapper(componentModel = "spring")
 public interface TaskMapper {
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "title", target = "title")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "dueDate", target = "dueDate")
+    @Mapping(source = "status", target = "status")
     TaskResponseDto toDto(Task task);
 
-    List<TaskResponseDto> toDtoList(List<Task> tasks);
+    Page<TaskResponseDto> toDtoList(Page<Task> tasks);
 
+    @Mapping(target = "id", ignore = true)
     Task toEntity(CreateTaskRequestDto requestDto);
 
+    @Mapping(target = "id", ignore = true)
     Task toEntity(UpdateTaskRequestDto requestDto);
-
-    void updateEntityFromDto(UpdateTaskRequestDto dto, @MappingTarget Task task);
 }

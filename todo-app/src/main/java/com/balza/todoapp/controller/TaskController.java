@@ -3,53 +3,70 @@ package com.balza.todoapp.controller;
 import com.balza.todoapp.dto.CreateTaskRequestDto;
 import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
+import com.balza.todoapp.model.Status;
 import com.balza.todoapp.service.TaskService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import static com.balza.todoapp.util.RestApiUrls.TASK_API_BASE_PATH;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping(TASK_API_BASE_PATH)
 @RequiredArgsConstructor
-public class TaskController {
+public class TaskController implements TaskApi {
     private final TaskService taskService;
 
-    @GetMapping("/{id}")
-    public TaskResponseDto getTaskById(@PathVariable Long id) {
-        return taskService.getById(id);
+
+    @Override
+    public ResponseEntity<TaskResponseDto> createTask(CreateTaskRequestDto requestDto) {
+        TaskResponseDto createdTask = taskService.createTask(requestDto);
+        ResponseEntity<TaskResponseDto> response = new ResponseEntity<>(createdTask, HttpStatus.CREATED);
+        return response;
     }
 
-    @PostMapping
-    public ResponseEntity<TaskResponseDto> createTask(@Valid @RequestBody CreateTaskRequestDto taskToCreate) {
-        TaskResponseDto createdTask = taskService.createTask(taskToCreate);
-        return new ResponseEntity<>(createdTask, HttpStatus.CREATED);
+    @Override
+    public ResponseEntity<TaskResponseDto> getTaskById(Long id) {
+        TaskResponseDto taskDto = taskService.getById(id);
+        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(taskDto);
+        return response;
     }
 
-    @PutMapping("/{id}")
-    public TaskResponseDto updateTask(@PathVariable Long id, @Valid @RequestBody UpdateTaskRequestDto taskToUpdate) {
-        return taskService.updateTask(id, taskToUpdate);
+    @Override
+    public ResponseEntity<Page<TaskResponseDto>> getTasks(Status status, String sortBy, String sortOrder, Integer page, Integer size) {
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<TaskResponseDto> tasksPage = taskService.getTasks(status, pageable);
+        ResponseEntity<Page<TaskResponseDto>> response = ResponseEntity.ok(tasksPage);
+        return response;
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
+    @Override
+    public ResponseEntity<TaskResponseDto> updateTask(UpdateTaskRequestDto requestDto) {
+        TaskResponseDto updatedTask = taskService.updateTask(requestDto);
+        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(updatedTask);
+        return response;
+    }
+
+    @Override
+    public ResponseEntity<TaskResponseDto> updateTaskStatus(Long id, Status status) {
+        TaskResponseDto updatedTask = taskService.updateTaskStatus(id, status);
+        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(updatedTask);
+        return response;
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteTask(Long id) {
         taskService.deleteById(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    public List<TaskResponseDto> getAllTasks(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String sortBy) {
-        if (status != null) {
-            return taskService.findByStatus(status);
-        }
-        if (sortBy != null) {
-            return taskService.findAllAndSort(sortBy);
-        }
-        return taskService.findAll();
+        ResponseEntity<Void> response = ResponseEntity.noContent().build();
+        return response;
     }
 }

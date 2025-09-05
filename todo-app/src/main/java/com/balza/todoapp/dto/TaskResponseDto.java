@@ -1,12 +1,14 @@
 package com.balza.todoapp.dto;
 
-import java.time.Instant;
+import com.balza.todoapp.model.Status;
+
+import java.time.OffsetDateTime;
 
 public record TaskResponseDto(
         Long id,
         String title,
         String description,
-        Instant dueDate,
-        String status
+        OffsetDateTime dueDate,
+        Status status
 ) {
 }

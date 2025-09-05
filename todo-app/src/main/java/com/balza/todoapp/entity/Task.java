@@ -1,10 +1,11 @@
 package com.balza.todoapp.entity;
 
+import com.balza.todoapp.model.Status;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "tasks")
@@ -17,12 +18,9 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
-    @Column(name = "title")
     String title;
-    @Column(name = "description")
     String description;
-    @Column(name = "due_date")
-    Instant dueDate;
-    @Column(name = "status")
-    String status;
+    OffsetDateTime dueDate;
+    @Enumerated(EnumType.STRING)
+    Status status;
 }

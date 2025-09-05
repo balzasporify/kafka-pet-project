@@ -6,34 +6,39 @@ import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.entity.Task;
 import com.balza.todoapp.exception.TaskNotFoundException;
 import com.balza.todoapp.mapper.TaskMapper;
+import com.balza.todoapp.model.Status;
 import com.balza.todoapp.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
-@Transactional
 @Slf4j
 public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
 
     @Override
+    @Transactional
     public TaskResponseDto createTask(CreateTaskRequestDto requestDto) {
         log.info("Attempting to create a new task with title: '{}'", requestDto.title());
         Task taskToSave = taskMapper.toEntity(requestDto);
         Task savedTask = taskRepository.save(taskToSave);
-        log.debug("Successfully created task with id: {}", savedTask.getId());
-        return taskMapper.toDto(savedTask);
+        log.info("Successfully created task with id: {}", savedTask.getId());
+        TaskResponseDto dto = taskMapper.toDto(savedTask);
+        return dto;
     }
 
+
     @Override
-    public TaskResponseDto updateTask(Long id, UpdateTaskRequestDto requestDto) {
+    @Transactional
+    public TaskResponseDto updateTask(UpdateTaskRequestDto requestDto) {
+        final Long id = requestDto.id();
         log.info("Attempting to update task with id: {}", id);
         Task existingTask = taskRepository.findById(id)
                 .orElseThrow(() -> {
@@ -41,56 +46,65 @@ public class TaskServiceImpl implements TaskService {
                     return new TaskNotFoundException("Task not found with id: " + id);
                 });
 
-        taskMapper.updateEntityFromDto(requestDto, existingTask);
+        existingTask.setTitle(requestDto.title());
+        existingTask.setDescription(requestDto.description());
+        existingTask.setDueDate(requestDto.dueDate());
+        existingTask.setStatus(requestDto.status());
+
         Task savedTask = taskRepository.save(existingTask);
-        log.debug("Successfully updated task with id: {}", savedTask.getId());
-        return taskMapper.toDto(savedTask);
+        log.info("Successfully updated task with id: {}", savedTask.getId());
+        TaskResponseDto dto = taskMapper.toDto(savedTask);
+        return dto;
+    }
+
+    @Override
+    @Transactional
+    public TaskResponseDto updateTaskStatus(Long id, Status status) {
+        log.info("Attempting to update status to {} for task with id: {}", status, id);
+        Task existingTask = taskRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Update status failed. Task not found with id: {}", id);
+                    return new TaskNotFoundException("Task not found with id: " + id);
+                });
+        existingTask.setStatus(status);
+        Task savedTask = taskRepository.save(existingTask);
+        log.info("Successfully updated status for task with id: {}", savedTask.getId());
+        TaskResponseDto dto = taskMapper.toDto(savedTask);
+        return dto;
     }
 
     @Override
     @Transactional(readOnly = true)
     public TaskResponseDto getById(Long id) {
         log.info("Fetching task with id: {}", id);
-        return taskRepository.findById(id)
+        TaskResponseDto taskResponseDto = taskRepository.findById(id)
                 .map(taskMapper::toDto)
                 .orElseThrow(() -> {
                     log.error("Task not found with id: {}", id);
                     return new TaskNotFoundException("Task not found with id: " + id);
                 });
+        return taskResponseDto;
     }
 
     @Override
+    @Transactional
     public void deleteById(Long id) {
         log.info("Attempting to delete task with id: {}", id);
-        if (!taskRepository.existsById(id)) {
-            log.error("Delete failed. Task not found with id: {}", id);
-            throw new TaskNotFoundException("Task not found with id: " + id);
-        }
         taskRepository.deleteById(id);
-        log.debug("Successfully deleted task with id: {}", id);
+        log.info("Delete operation called for task with id: {}", id);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TaskResponseDto> findAll() {
-        log.info("Fetching all tasks");
-        return taskMapper.toDtoList(taskRepository.findAll());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskResponseDto> findByStatus(String status) {
-        log.info("Fetching all tasks with status: {}", status);
-        return taskMapper.toDtoList(taskRepository.findByStatus(status));
-    }
-
-
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<TaskResponseDto> findAllAndSort(String sortBy) {
-        log.info("Fetching all tasks sorted by: {}", sortBy);
-        Sort sort = Sort.by(sortBy);
-        return taskMapper.toDtoList(taskRepository.findAll(sort));
+    public Page<TaskResponseDto> getTasks(Status status, Pageable pageable) {
+        log.info("Fetching tasks with status: [{}] and sortBy: [{}]", status, pageable);
+        Page<Task> taskPage;
+        if (status != null) {
+            taskPage = taskRepository.findByStatus(status, pageable);
+        } else {
+            taskPage = taskRepository.findAll(pageable);
+        }
+        Page<TaskResponseDto> pageDto = taskPage.map(taskMapper::toDto);
+        return pageDto;
     }
 }
