@@ -4,6 +4,8 @@ import com.balza.todoapp.dto.CreateTaskRequestDto;
 import com.balza.todoapp.dto.TaskResponseDto;
 import com.balza.todoapp.dto.UpdateTaskRequestDto;
 import com.balza.todoapp.entity.Task;
+import com.balza.todoapp.events.TaskEventPublisher;
+import com.balza.todoapp.events.TaskUpdatedEvent;
 import com.balza.todoapp.exception.TaskNotFoundException;
 import com.balza.todoapp.mapper.TaskMapper;
 import com.balza.todoapp.model.Status;
@@ -12,9 +14,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
+    private final TaskEventPublisher taskEventPublisher;
 
     @Override
     @Transactional
@@ -46,6 +50,13 @@ public class TaskServiceImpl implements TaskService {
                     return new TaskNotFoundException("Task not found with id: " + id);
                 });
 
+        Map<String, Object> prev = Map.of(
+                "title", existingTask.getTitle(),
+                "decription", existingTask.getDescription(),
+                "dueDate", existingTask.getDueDate(),
+                "status", existingTask.getStatus()
+        );
+
         existingTask.setTitle(requestDto.title());
         existingTask.setDescription(requestDto.description());
         existingTask.setDueDate(requestDto.dueDate());
@@ -53,6 +64,17 @@ public class TaskServiceImpl implements TaskService {
 
         Task savedTask = taskRepository.save(existingTask);
         log.info("Successfully updated task with id: {}", savedTask.getId());
+
+        Map<String, Object> curr = Map.of(
+                "title", savedTask.getTitle(),
+                "description", savedTask.getDescription(),
+                "dueDate", savedTask.getDueDate(),
+                "status", savedTask.getStatus()
+        );
+        taskEventPublisher.publishUpdated(
+                TaskUpdatedEvent.of(savedTask.getId(), prev, curr)
+        );
+
         TaskResponseDto dto = taskMapper.toDto(savedTask);
         return dto;
     }
