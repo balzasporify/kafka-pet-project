@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/dec6a1fe-791b-430e-b5ee-f31319bbf85d/console.sql" value="dec6a1fe-791b-430e-b5ee-f31319bbf85d" />
+    <file url="file://$PROJECT_DIR$/stats-service/src/main/java/com/balza/statsservice/repository/TaskUpdateRepository.java" value="dec6a1fe-791b-430e-b5ee-f31319bbf85d" />
+    <file url="file://$PROJECT_DIR$/stats-service/src/main/java/com/balza/statsservice/service/StatsService.java" value="dec6a1fe-791b-430e-b5ee-f31319bbf85d" />
+  </component>
+</project>

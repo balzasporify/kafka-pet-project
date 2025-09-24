@@ -1,0 +1,2656 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..434b615
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,24 @@
++version: "3.8"
++services:
++  zookeeper:
++    image: confluentinc/cp-zookeeper:7.6.0
++    environment:
++      ZOOKEEPER_CLIENT_PORT: 2181
++      ZOOKEEPER_TICK_TIME: 2000
++    ports: ["2181:2181"]
++
++  kafka:
++    image: confluentinc/cp-kafka:7.6.0
++    depends_on: [ zookeeper ]
++    ports:
++      - "29092:29092"
++    environment:
++      KAFKA_BROKER_ID: 1
++      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
++      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
++      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092"
++      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092"
++      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
++      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
++
++
+diff --git a/pom.xml b/pom.xml
+new file mode 100644
+index 0000000..4626c9c
+--- /dev/null
++++ b/pom.xml
+@@ -0,0 +1,32 @@
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
++  <modelVersion>4.0.0</modelVersion>
++
++  <groupId>com.balza</groupId>
++  <artifactId>kafka-pet-project</artifactId>
++  <version>1.0.0-SNAPSHOT</version>
++  <packaging>pom</packaging>
++
++  <modules>
++    <module>todo-app</module>
++    <module>stats-service</module>
++  </modules>
++
++  <properties>
++    <java.version>17</java.version>
++    <spring.boot.version>3.5.5</spring.boot.version>
++  </properties>
++
++  <dependencyManagement>
++    <dependencies>
++      <dependency>
++        <groupId>org.springframework.boot</groupId>
++        <artifactId>spring-boot-dependencies</artifactId>
++        <version>${spring.boot.version}</version>
++        <type>pom</type>
++        <scope>import</scope>
++      </dependency>
++    </dependencies>
++  </dependencyManagement>
++</project>
+diff --git a/stats-service/pom.xml b/stats-service/pom.xml
+new file mode 100644
+index 0000000..6a37fa4
+--- /dev/null
++++ b/stats-service/pom.xml
+@@ -0,0 +1,52 @@
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
++    <modelVersion>4.0.0</modelVersion>
++    <parent>
++        <groupId>com.balza</groupId>
++        <artifactId>kafka-pet-project</artifactId>
++        <version>1.0.0-SNAPSHOT</version>
++    </parent>
++    <artifactId>stats-service</artifactId>
++
++    <dependencies>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-web</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-jpa</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.kafka</groupId>
++            <artifactId>spring-kafka</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.postgresql</groupId>
++            <artifactId>postgresql</artifactId>
++            <scope>runtime</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.projectlombok</groupId>
++            <artifactId>lombok</artifactId>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.liquibase</groupId>
++            <artifactId>liquibase-core</artifactId>
++        </dependency>
++    </dependencies>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.apache.maven.plugins</groupId>
++                <artifactId>maven-compiler-plugin</artifactId>
++                <configuration>
++                    <source>16</source>
++                    <target>16</target>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
+diff --git a/stats-service/src/main/java/com/balza/statsservice/StatsServiceApplication.java b/stats-service/src/main/java/com/balza/statsservice/StatsServiceApplication.java
+new file mode 100644
+index 0000000..3f0d5cb
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/StatsServiceApplication.java
+@@ -0,0 +1,11 @@
++package com.balza.statsservice;
++
++import org.springframework.boot.SpringApplication;
++import org.springframework.boot.autoconfigure.SpringBootApplication;
++
++@SpringBootApplication
++public class StatsServiceApplication {
++    public static void main(String[] args) {
++        SpringApplication.run(StatsServiceApplication.class, args);
++    }
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/api/StatsController.java b/stats-service/src/main/java/com/balza/statsservice/api/StatsController.java
+new file mode 100644
+index 0000000..d169e74
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/api/StatsController.java
+@@ -0,0 +1,20 @@
++package com.balza.statsservice.api;
++
++import com.balza.statsservice.service.StatsService;
++import lombok.RequiredArgsConstructor;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequiredArgsConstructor
++@RequestMapping("/api/stats")
++public class StatsController {
++
++    private final StatsService statsService;
++
++    @GetMapping
++    public StatsView getStats() {
++        return statsService.getStats();
++    }
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/api/StatsView.java b/stats-service/src/main/java/com/balza/statsservice/api/StatsView.java
+new file mode 100644
+index 0000000..40c1812
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/api/StatsView.java
+@@ -0,0 +1,4 @@
++package com.balza.statsservice.api;
++
++public record StatsView(long totalTasks, long updatedTasks, double updatedPercent) {
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/config/KafkaConsumerConfig.java b/stats-service/src/main/java/com/balza/statsservice/config/KafkaConsumerConfig.java
+new file mode 100644
+index 0000000..da7dbc9
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/config/KafkaConsumerConfig.java
+@@ -0,0 +1,45 @@
++package com.balza.statsservice.config;
++
++import com.balza.statsservice.events.TaskUpdatedEvent;
++import org.apache.kafka.clients.consumer.ConsumerConfig;
++import org.apache.kafka.common.serialization.StringDeserializer;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
++import org.springframework.kafka.core.ConsumerFactory;
++import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
++import org.springframework.kafka.support.serializer.JsonDeserializer;
++
++import java.util.HashMap;
++import java.util.Map;
++
++@Configuration
++public class KafkaConsumerConfig {
++
++    @Value("${spring.kafka.bootstrap-servers}")
++    private String bootstrap;
++
++    @Bean
++    public ConsumerFactory<String, TaskUpdatedEvent> taskUpdatedConsumerFactory() {
++        Map<String, Object> props = new HashMap<>();
++        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
++        props.put(ConsumerConfig.GROUP_ID_CONFIG, "stats-service");
++        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
++        JsonDeserializer<TaskUpdatedEvent> valueDeserializer =
++                new JsonDeserializer<>(TaskUpdatedEvent.class, false);
++        valueDeserializer.addTrustedPackages("*");
++        return new DefaultKafkaConsumerFactory<>(
++                props, new StringDeserializer(), valueDeserializer
++        );
++    }
++
++    @Bean
++    public ConcurrentKafkaListenerContainerFactory<String, TaskUpdatedEvent>
++    taskUpdatedKafkaListenerContainerFactory() {
++        ConcurrentKafkaListenerContainerFactory<String, TaskUpdatedEvent> factory =
++                new ConcurrentKafkaListenerContainerFactory<>();
++        factory.setConsumerFactory(taskUpdatedConsumerFactory());
++        return factory;
++    }
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/events/TaskUpdatedEvent.java b/stats-service/src/main/java/com/balza/statsservice/events/TaskUpdatedEvent.java
+new file mode 100644
+index 0000000..d829e98
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/events/TaskUpdatedEvent.java
+@@ -0,0 +1,14 @@
++package com.balza.statsservice.events;
++
++import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
++import lombok.Data;
++
++import java.time.Instant;
++
++@Data
++@JsonIgnoreProperties(ignoreUnknown = true)
++public class TaskUpdatedEvent {
++    private Long taskId;
++    private Instant occurredAt;
++    private Long totalTasks;
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/model/TaskUpdate.java b/stats-service/src/main/java/com/balza/statsservice/model/TaskUpdate.java
+new file mode 100644
+index 0000000..ed3d3e6
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/model/TaskUpdate.java
+@@ -0,0 +1,20 @@
++package com.balza.statsservice.model;
++
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++import lombok.*;
++
++import java.time.Instant;
++
++@Entity
++@Table(name = "task_updates")
++@Getter @Setter
++@NoArgsConstructor
++@AllArgsConstructor
++@Builder
++public class TaskUpdate {
++    @Id
++    private Long taskId;
++    private Instant lastUpdated;
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/repository/TaskUpdateRepository.java b/stats-service/src/main/java/com/balza/statsservice/repository/TaskUpdateRepository.java
+new file mode 100644
+index 0000000..bbab8ca
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/repository/TaskUpdateRepository.java
+@@ -0,0 +1,11 @@
++package com.balza.statsservice.repository;
++
++import com.balza.statsservice.model.TaskUpdate;
++import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++
++public interface TaskUpdateRepository extends JpaRepository<TaskUpdate, Long> {
++
++    @Query(value = "select count(*) from stats.task_updates", nativeQuery = true)
++    long countUpdatedTasks();
++}
+diff --git a/stats-service/src/main/java/com/balza/statsservice/service/StatsService.java b/stats-service/src/main/java/com/balza/statsservice/service/StatsService.java
+new file mode 100644
+index 0000000..0e66c74
+--- /dev/null
++++ b/stats-service/src/main/java/com/balza/statsservice/service/StatsService.java
+@@ -0,0 +1,51 @@
++package com.balza.statsservice.service;
++
++import com.balza.statsservice.api.StatsView;
++import com.balza.statsservice.events.TaskUpdatedEvent;
++import com.balza.statsservice.model.TaskUpdate;
++import com.balza.statsservice.repository.TaskUpdateRepository;
++import lombok.RequiredArgsConstructor;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.kafka.annotation.KafkaListener;
++import org.springframework.stereotype.Service;
++
++@Service
++@RequiredArgsConstructor
++public class StatsService {
++
++    private final TaskUpdateRepository repo;
++    private final JdbcTemplate jdbcTemplate;
++
++    @KafkaListener(
++            topics = "task.updated",
++            containerFactory = "taskUpdatedKafkaListenerContainerFactory"
++    )
++    public void onTaskUpdated(TaskUpdatedEvent event) {
++        repo.save(TaskUpdate.builder()
++                .taskId(event.getTaskId())
++                .lastUpdated(event.getOccurredAt())
++                .build());
++        updateTotalTasks(event.getTotalTasks());
++    }
++
++    public void updateTotalTasks(Long total) {
++        jdbcTemplate.update("DELETE FROM stats.total_tasks");
++        jdbcTemplate.update("INSERT INTO stats.total_tasks(total) VALUES (?)", total);
++    }
++
++    public Long getTotalTasks() {
++        return jdbcTemplate.queryForObject(
++                "SELECT total FROM stats.total_tasks LIMIT 1",
++                Long.class
++        );
++    }
++
++    public StatsView getStats() {
++        long updated = repo.countUpdatedTasks();
++        long total = getTotalTasks();
++        double percent = total == 0 ? 0.0 : (updated * 100.0) / total;
++        return new StatsView(total, updated, percent);
++    }
++
++
++}
+diff --git a/stats-service/src/main/resources/application.yml b/stats-service/src/main/resources/application.yml
+new file mode 100644
+index 0000000..afcb2c6
+--- /dev/null
++++ b/stats-service/src/main/resources/application.yml
+@@ -0,0 +1,22 @@
++server:
++  port: 8082
++
++spring:
++  application:
++    name: stats-service
++  datasource:
++    url: jdbc:postgresql://localhost:5432/todo_db
++    username: postgres
++    password: 123
++  jpa:
++    hibernate:
++      ddl-auto: validate
++    show-sql: true
++    open-in-view: false
++    properties:
++      hibernate.jdbc.time_zone: UTC
++      hibernate.default_schema: stats
++  kafka:
++    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:29092}
++  liquibase:
++    change-log: classpath:db/changelog/db.changelog-master.yaml
+\ No newline at end of file
+diff --git a/stats-service/src/main/resources/db/changelog/0001-init-stats.yaml b/stats-service/src/main/resources/db/changelog/0001-init-stats.yaml
+new file mode 100644
+index 0000000..4864630
+--- /dev/null
++++ b/stats-service/src/main/resources/db/changelog/0001-init-stats.yaml
+@@ -0,0 +1,56 @@
++databaseChangeLog:
++  - changeSet:
++      id: 0001-create-schema-stats
++      author: balzasporify
++      changes:
++        - sql:
++            dbms: postgresql
++            splitStatements: false
++            sql: |
++              CREATE SCHEMA IF NOT EXISTS stats;
++
++
++  - changeSet:
++      id: 0002-create-table-task-updates
++      author: balzasporify
++      preConditions:
++        - onFail: MARK_RAN
++        - not:
++          - tableExists:
++              schemaName: stats
++              tableName: task_updates
++      changes:
++        - createTable:
++            schemaName: stats
++            tableName: task_updates
++            columns:
++              - column:
++                  name: task_id
++                  type: BIGINT
++                  constraints:
++                    primaryKey: true
++                    nullable: false
++              - column:
++                  name: last_updated
++                  type: TIMESTAMP WITH TIME ZONE
++                  constraints:
++                    nullable: false
++  - changeSet:
++      id: 0003-create-table-total-tasks
++      author: balzasporify
++      preConditions:
++        - onFail: MARK_RAN
++        - not:
++            - tableExists:
++                schemaName: stats
++                tableName: total_tasks
++      changes:
++        - createTable:
++            schemaName: stats
++            tableName: total_tasks
++            columns:
++              - column:
++                  name: total
++                  type: BIGINT
++                  constraints:
++                    nullable: false
+\ No newline at end of file
+diff --git a/stats-service/src/main/resources/db/changelog/db.changelog-master.yaml b/stats-service/src/main/resources/db/changelog/db.changelog-master.yaml
+new file mode 100644
+index 0000000..7213e4b
+--- /dev/null
++++ b/stats-service/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -0,0 +1,3 @@
++databaseChangeLog:
++  - include:
++      file: db/changelog/0001-init-stats.yaml
+diff --git a/todo-app/.gitattributes b/todo-app/.gitattributes
+new file mode 100644
+index 0000000..3b41682
+--- /dev/null
++++ b/todo-app/.gitattributes
+@@ -0,0 +1,2 @@
++/mvnw text eol=lf
++*.cmd text eol=crlf
+diff --git a/todo-app/.gitignore b/todo-app/.gitignore
+new file mode 100644
+index 0000000..8cf54e8
+--- /dev/null
++++ b/todo-app/.gitignore
+@@ -0,0 +1,34 @@
++HELP.md
++target/
++.mvn/wrapper/maven-wrapper.jar
++!**/src/main/**/target/
++!**/src/test/**/target/
++
++### STS ###
++.apt_generated
++.classpath
++.factorypath
++.project
++.settings
++.springBeans
++.sts4-cache
++
++### IntelliJ IDEA ###
++.idea
++*.iws
++*.iml
++*.ipr
++
++### NetBeans ###
++/nbproject/private/
++/nbbuild/
++/dist/
++/nbdist/
++/.nb-gradle/
++build/
++!**/src/main/**/build/
++!**/src/test/**/build/
++
++### VS Code ###
++.vscode/
++.env
+\ No newline at end of file
+diff --git a/todo-app/Todo App API v1 (Adapted for OffsetDateTime).postman_collection.json b/todo-app/Todo App API v1 (Adapted for OffsetDateTime).postman_collection.json
+new file mode 100644
+index 0000000..859cd21
+--- /dev/null
++++ b/todo-app/Todo App API v1 (Adapted for OffsetDateTime).postman_collection.json	
+@@ -0,0 +1,294 @@
++{
++	"info": {
++		"_postman_id": "1a85990d-7642-423d-a856-e50e8ed2e634",
++		"name": "Todo App API v1 (Adapted for OffsetDateTime)",
++		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
++		"_exporter_id": "47969471",
++		"_collection_link": "https://s-team-269442.postman.co/workspace/Team-Workspace~c78fa2f7-6d60-4624-8ae1-b3407f523ac1/collection/47969471-1a85990d-7642-423d-a856-e50e8ed2e634?action=share&source=collection_link&creator=47969471"
++	},
++	"item": [
++		{
++			"name": "Create task 1",
++			"request": {
++				"method": "POST",
++				"header": [],
++				"body": {
++					"mode": "raw",
++					"raw": "{\r\n    \"title\": \"Test Task 1\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
++					"options": {
++						"raw": {
++							"language": "json"
++						}
++					}
++				},
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Create task 2",
++			"request": {
++				"method": "POST",
++				"header": [],
++				"body": {
++					"mode": "raw",
++					"raw": "{\r\n    \"title\": \"Test Task 2\",\r\n    \"description\": \"Test Description 2\",\r\n    \"dueDate\": \"2025-09-15T12:00:00+03:00\",\r\n    \"status\": \"IN_PROGRESS\"\r\n}",
++					"options": {
++						"raw": {
++							"language": "json"
++						}
++					}
++				},
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Create task 3",
++			"request": {
++				"method": "POST",
++				"header": [],
++				"body": {
++					"mode": "raw",
++					"raw": "{\r\n    \"title\": \"Test Task 3\",\r\n    \"description\": \"Test Description 3\",\r\n    \"dueDate\": \"2025-09-12T14:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
++					"options": {
++						"raw": {
++							"language": "json"
++						}
++					}
++				},
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Create task 4",
++			"request": {
++				"method": "POST",
++				"header": [],
++				"body": {
++					"mode": "raw",
++					"raw": "{\r\n    \"title\": \"Test Task 4\",\r\n    \"description\": \"Test Description 4\",\r\n    \"dueDate\": \"2025-09-20T16:00:00+03:00\",\r\n    \"status\": \"TODO\"\r\n}",
++					"options": {
++						"raw": {
++							"language": "json"
++						}
++					}
++				},
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Get All Tasks",
++			"request": {
++				"method": "GET",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Get All Tasks (Sorted by Date)",
++			"request": {
++				"method": "GET",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks?sortBy=dueDate",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					],
++					"query": [
++						{
++							"key": "sortBy",
++							"value": "dueDate"
++						}
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Get Tasks by Status",
++			"request": {
++				"method": "GET",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks?status=DONE",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					],
++					"query": [
++						{
++							"key": "status",
++							"value": "DONE"
++						}
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Get Task by ID",
++			"request": {
++				"method": "GET",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks/1",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks",
++						"1"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Update Task",
++			"request": {
++				"method": "PUT",
++				"header": [],
++				"body": {
++					"mode": "raw",
++					"raw": "{\r\n    \"id\": 1,\r\n    \"title\": \"Test Task 1(UPDATED)\",\r\n    \"description\": \"Test Description 1\",\r\n    \"dueDate\": \"2025-09-10T10:00:00+03:00\",\r\n    \"status\": \"DONE\"\r\n}",
++					"options": {
++						"raw": {
++							"language": "json"
++						}
++					}
++				},
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks"
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Update Task Status",
++			"request": {
++				"method": "PATCH",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks/1/status?status=DONE",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks",
++						"1",
++						"status"
++					],
++					"query": [
++						{
++							"key": "status",
++							"value": "DONE"
++						}
++					]
++				}
++			},
++			"response": []
++		},
++		{
++			"name": "Delete Task",
++			"request": {
++				"method": "DELETE",
++				"header": [],
++				"url": {
++					"raw": "{{baseURL}}/api/v1/tasks/1",
++					"host": [
++						"{{baseURL}}"
++					],
++					"path": [
++						"api",
++						"v1",
++						"tasks",
++						"1"
++					]
++				}
++			},
++			"response": []
++		}
++	],
++	"variable": [
++		{
++			"key": "baseURL",
++			"value": "http://localhost:8080",
++			"type": "string"
++		}
++	]
++}
+\ No newline at end of file
+diff --git a/todo-app/docker-compose.yml b/todo-app/docker-compose.yml
+new file mode 100644
+index 0000000..1ed72cc
+--- /dev/null
++++ b/todo-app/docker-compose.yml
+@@ -0,0 +1,16 @@
++version: '3.8'
++
++services:
++  postgres:
++    image: 'postgres:15-alpine'
++    environment:
++      - POSTGRES_DB=${POSTGRES_DB}
++      - POSTGRES_USER=${POSTGRES_USER}
++      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
++    ports:
++      - "5432:5432"
++    volumes:
++      - pgdata:/var/lib/postgresql/data
++
++volumes:
++  pgdata:
+\ No newline at end of file
+diff --git a/todo-app/mvnw b/todo-app/mvnw
+new file mode 100644
+index 0000000..19529dd
+--- /dev/null
++++ b/todo-app/mvnw
+@@ -0,0 +1,259 @@
++#!/bin/sh
++# ----------------------------------------------------------------------------
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
++#
++#    http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
++# ----------------------------------------------------------------------------
++
++# ----------------------------------------------------------------------------
++# Apache Maven Wrapper startup batch script, version 3.3.2
++#
++# Optional ENV vars
++# -----------------
++#   JAVA_HOME - location of a JDK home dir, required when download maven via java source
++#   MVNW_REPOURL - repo url base for downloading maven distribution
++#   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
++#   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
++# ----------------------------------------------------------------------------
++
++set -euf
++[ "${MVNW_VERBOSE-}" != debug ] || set -x
++
++# OS specific support.
++native_path() { printf %s\\n "$1"; }
++case "$(uname)" in
++CYGWIN* | MINGW*)
++  [ -z "${JAVA_HOME-}" ] || JAVA_HOME="$(cygpath --unix "$JAVA_HOME")"
++  native_path() { cygpath --path --windows "$1"; }
++  ;;
++esac
++
++# set JAVACMD and JAVACCMD
++set_java_home() {
++  # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
++  if [ -n "${JAVA_HOME-}" ]; then
++    if [ -x "$JAVA_HOME/jre/sh/java" ]; then
++      # IBM's JDK on AIX uses strange locations for the executables
++      JAVACMD="$JAVA_HOME/jre/sh/java"
++      JAVACCMD="$JAVA_HOME/jre/sh/javac"
++    else
++      JAVACMD="$JAVA_HOME/bin/java"
++      JAVACCMD="$JAVA_HOME/bin/javac"
++
++      if [ ! -x "$JAVACMD" ] || [ ! -x "$JAVACCMD" ]; then
++        echo "The JAVA_HOME environment variable is not defined correctly, so mvnw cannot run." >&2
++        echo "JAVA_HOME is set to \"$JAVA_HOME\", but \"\$JAVA_HOME/bin/java\" or \"\$JAVA_HOME/bin/javac\" does not exist." >&2
++        return 1
++      fi
++    fi
++  else
++    JAVACMD="$(
++      'set' +e
++      'unset' -f command 2>/dev/null
++      'command' -v java
++    )" || :
++    JAVACCMD="$(
++      'set' +e
++      'unset' -f command 2>/dev/null
++      'command' -v javac
++    )" || :
++
++    if [ ! -x "${JAVACMD-}" ] || [ ! -x "${JAVACCMD-}" ]; then
++      echo "The java/javac command does not exist in PATH nor is JAVA_HOME set, so mvnw cannot run." >&2
++      return 1
++    fi
++  fi
++}
++
++# hash string like Java String::hashCode
++hash_string() {
++  str="${1:-}" h=0
++  while [ -n "$str" ]; do
++    char="${str%"${str#?}"}"
++    h=$(((h * 31 + $(LC_CTYPE=C printf %d "'$char")) % 4294967296))
++    str="${str#?}"
++  done
++  printf %x\\n $h
++}
++
++verbose() { :; }
++[ "${MVNW_VERBOSE-}" != true ] || verbose() { printf %s\\n "${1-}"; }
++
++die() {
++  printf %s\\n "$1" >&2
++  exit 1
++}
++
++trim() {
++  # MWRAPPER-139:
++  #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
++  #   Needed for removing poorly interpreted newline sequences when running in more
++  #   exotic environments such as mingw bash on Windows.
++  printf "%s" "${1}" | tr -d '[:space:]'
++}
++
++# parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
++while IFS="=" read -r key value; do
++  case "${key-}" in
++  distributionUrl) distributionUrl=$(trim "${value-}") ;;
++  distributionSha256Sum) distributionSha256Sum=$(trim "${value-}") ;;
++  esac
++done <"${0%/*}/.mvn/wrapper/maven-wrapper.properties"
++[ -n "${distributionUrl-}" ] || die "cannot read distributionUrl property in ${0%/*}/.mvn/wrapper/maven-wrapper.properties"
++
++case "${distributionUrl##*/}" in
++maven-mvnd-*bin.*)
++  MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/
++  case "${PROCESSOR_ARCHITECTURE-}${PROCESSOR_ARCHITEW6432-}:$(uname -a)" in
++  *AMD64:CYGWIN* | *AMD64:MINGW*) distributionPlatform=windows-amd64 ;;
++  :Darwin*x86_64) distributionPlatform=darwin-amd64 ;;
++  :Darwin*arm64) distributionPlatform=darwin-aarch64 ;;
++  :Linux*x86_64*) distributionPlatform=linux-amd64 ;;
++  *)
++    echo "Cannot detect native platform for mvnd on $(uname)-$(uname -m), use pure java version" >&2
++    distributionPlatform=linux-amd64
++    ;;
++  esac
++  distributionUrl="${distributionUrl%-bin.*}-$distributionPlatform.zip"
++  ;;
++maven-mvnd-*) MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/ ;;
++*) MVN_CMD="mvn${0##*/mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
++esac
++
++# apply MVNW_REPOURL and calculate MAVEN_HOME
++# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
++[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl#*"$_MVNW_REPO_PATTERN"}"
++distributionUrlName="${distributionUrl##*/}"
++distributionUrlNameMain="${distributionUrlName%.*}"
++distributionUrlNameMain="${distributionUrlNameMain%-bin}"
++MAVEN_USER_HOME="${MAVEN_USER_HOME:-${HOME}/.m2}"
++MAVEN_HOME="${MAVEN_USER_HOME}/wrapper/dists/${distributionUrlNameMain-}/$(hash_string "$distributionUrl")"
++
++exec_maven() {
++  unset MVNW_VERBOSE MVNW_USERNAME MVNW_PASSWORD MVNW_REPOURL || :
++  exec "$MAVEN_HOME/bin/$MVN_CMD" "$@" || die "cannot exec $MAVEN_HOME/bin/$MVN_CMD"
++}
++
++if [ -d "$MAVEN_HOME" ]; then
++  verbose "found existing MAVEN_HOME at $MAVEN_HOME"
++  exec_maven "$@"
++fi
++
++case "${distributionUrl-}" in
++*?-bin.zip | *?maven-mvnd-?*-?*.zip) ;;
++*) die "distributionUrl is not valid, must match *-bin.zip or maven-mvnd-*.zip, but found '${distributionUrl-}'" ;;
++esac
++
++# prepare tmp dir
++if TMP_DOWNLOAD_DIR="$(mktemp -d)" && [ -d "$TMP_DOWNLOAD_DIR" ]; then
++  clean() { rm -rf -- "$TMP_DOWNLOAD_DIR"; }
++  trap clean HUP INT TERM EXIT
++else
++  die "cannot create temp dir"
++fi
++
++mkdir -p -- "${MAVEN_HOME%/*}"
++
++# Download and Install Apache Maven
++verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
++verbose "Downloading from: $distributionUrl"
++verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
++
++# select .zip or .tar.gz
++if ! command -v unzip >/dev/null; then
++  distributionUrl="${distributionUrl%.zip}.tar.gz"
++  distributionUrlName="${distributionUrl##*/}"
++fi
++
++# verbose opt
++__MVNW_QUIET_WGET=--quiet __MVNW_QUIET_CURL=--silent __MVNW_QUIET_UNZIP=-q __MVNW_QUIET_TAR=''
++[ "${MVNW_VERBOSE-}" != true ] || __MVNW_QUIET_WGET='' __MVNW_QUIET_CURL='' __MVNW_QUIET_UNZIP='' __MVNW_QUIET_TAR=v
++
++# normalize http auth
++case "${MVNW_PASSWORD:+has-password}" in
++'') MVNW_USERNAME='' MVNW_PASSWORD='' ;;
++has-password) [ -n "${MVNW_USERNAME-}" ] || MVNW_USERNAME='' MVNW_PASSWORD='' ;;
++esac
++
++if [ -z "${MVNW_USERNAME-}" ] && command -v wget >/dev/null; then
++  verbose "Found wget ... using wget"
++  wget ${__MVNW_QUIET_WGET:+"$__MVNW_QUIET_WGET"} "$distributionUrl" -O "$TMP_DOWNLOAD_DIR/$distributionUrlName" || die "wget: Failed to fetch $distributionUrl"
++elif [ -z "${MVNW_USERNAME-}" ] && command -v curl >/dev/null; then
++  verbose "Found curl ... using curl"
++  curl ${__MVNW_QUIET_CURL:+"$__MVNW_QUIET_CURL"} -f -L -o "$TMP_DOWNLOAD_DIR/$distributionUrlName" "$distributionUrl" || die "curl: Failed to fetch $distributionUrl"
++elif set_java_home; then
++  verbose "Falling back to use Java to download"
++  javaSource="$TMP_DOWNLOAD_DIR/Downloader.java"
++  targetZip="$TMP_DOWNLOAD_DIR/$distributionUrlName"
++  cat >"$javaSource" <<-END
++	public class Downloader extends java.net.Authenticator
++	{
++	  protected java.net.PasswordAuthentication getPasswordAuthentication()
++	  {
++	    return new java.net.PasswordAuthentication( System.getenv( "MVNW_USERNAME" ), System.getenv( "MVNW_PASSWORD" ).toCharArray() );
++	  }
++	  public static void main( String[] args ) throws Exception
++	  {
++	    setDefault( new Downloader() );
++	    java.nio.file.Files.copy( java.net.URI.create( args[0] ).toURL().openStream(), java.nio.file.Paths.get( args[1] ).toAbsolutePath().normalize() );
++	  }
++	}
++	END
++  # For Cygwin/MinGW, switch paths to Windows format before running javac and java
++  verbose " - Compiling Downloader.java ..."
++  "$(native_path "$JAVACCMD")" "$(native_path "$javaSource")" || die "Failed to compile Downloader.java"
++  verbose " - Running Downloader.java ..."
++  "$(native_path "$JAVACMD")" -cp "$(native_path "$TMP_DOWNLOAD_DIR")" Downloader "$distributionUrl" "$(native_path "$targetZip")"
++fi
++
++# If specified, validate the SHA-256 sum of the Maven distribution zip file
++if [ -n "${distributionSha256Sum-}" ]; then
++  distributionSha256Result=false
++  if [ "$MVN_CMD" = mvnd.sh ]; then
++    echo "Checksum validation is not supported for maven-mvnd." >&2
++    echo "Please disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
++    exit 1
++  elif command -v sha256sum >/dev/null; then
++    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | sha256sum -c >/dev/null 2>&1; then
++      distributionSha256Result=true
++    fi
++  elif command -v shasum >/dev/null; then
++    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | shasum -a 256 -c >/dev/null 2>&1; then
++      distributionSha256Result=true
++    fi
++  else
++    echo "Checksum validation was requested but neither 'sha256sum' or 'shasum' are available." >&2
++    echo "Please install either command, or disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
++    exit 1
++  fi
++  if [ $distributionSha256Result = false ]; then
++    echo "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised." >&2
++    echo "If you updated your Maven version, you need to update the specified distributionSha256Sum property." >&2
++    exit 1
++  fi
++fi
++
++# unzip and move
++if command -v unzip >/dev/null; then
++  unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
++else
++  tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
++fi
++printf %s\\n "$distributionUrl" >"$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/mvnw.url"
++mv -- "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" "$MAVEN_HOME" || [ -d "$MAVEN_HOME" ] || die "fail to move MAVEN_HOME"
++
++clean || :
++exec_maven "$@"
+diff --git a/todo-app/mvnw.cmd b/todo-app/mvnw.cmd
+new file mode 100644
+index 0000000..249bdf3
+--- /dev/null
++++ b/todo-app/mvnw.cmd
+@@ -0,0 +1,149 @@
++<# : batch portion
++@REM ----------------------------------------------------------------------------
++@REM Licensed to the Apache Software Foundation (ASF) under one
++@REM or more contributor license agreements.  See the NOTICE file
++@REM distributed with this work for additional information
++@REM regarding copyright ownership.  The ASF licenses this file
++@REM to you under the Apache License, Version 2.0 (the
++@REM "License"); you may not use this file except in compliance
++@REM with the License.  You may obtain a copy of the License at
++@REM
++@REM    http://www.apache.org/licenses/LICENSE-2.0
++@REM
++@REM Unless required by applicable law or agreed to in writing,
++@REM software distributed under the License is distributed on an
++@REM "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++@REM KIND, either express or implied.  See the License for the
++@REM specific language governing permissions and limitations
++@REM under the License.
++@REM ----------------------------------------------------------------------------
++
++@REM ----------------------------------------------------------------------------
++@REM Apache Maven Wrapper startup batch script, version 3.3.2
++@REM
++@REM Optional ENV vars
++@REM   MVNW_REPOURL - repo url base for downloading maven distribution
++@REM   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
++@REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
++@REM ----------------------------------------------------------------------------
++
++@IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
++@SET __MVNW_CMD__=
++@SET __MVNW_ERROR__=
++@SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
++@SET PSModulePath=
++@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
++  IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
++)
++@SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
++@SET __MVNW_PSMODULEP_SAVE=
++@SET __MVNW_ARG0_NAME__=
++@SET MVNW_USERNAME=
++@SET MVNW_PASSWORD=
++@IF NOT "%__MVNW_CMD__%"=="" (%__MVNW_CMD__% %*)
++@echo Cannot start maven from wrapper >&2 && exit /b 1
++@GOTO :EOF
++: end batch / begin powershell #>
++
++$ErrorActionPreference = "Stop"
++if ($env:MVNW_VERBOSE -eq "true") {
++  $VerbosePreference = "Continue"
++}
++
++# calculate distributionUrl, requires .mvn/wrapper/maven-wrapper.properties
++$distributionUrl = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionUrl
++if (!$distributionUrl) {
++  Write-Error "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
++}
++
++switch -wildcard -casesensitive ( $($distributionUrl -replace '^.*/','') ) {
++  "maven-mvnd-*" {
++    $USE_MVND = $true
++    $distributionUrl = $distributionUrl -replace '-bin\.[^.]*$',"-windows-amd64.zip"
++    $MVN_CMD = "mvnd.cmd"
++    break
++  }
++  default {
++    $USE_MVND = $false
++    $MVN_CMD = $script -replace '^mvnw','mvn'
++    break
++  }
++}
++
++# apply MVNW_REPOURL and calculate MAVEN_HOME
++# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
++if ($env:MVNW_REPOURL) {
++  $MVNW_REPO_PATTERN = if ($USE_MVND) { "/org/apache/maven/" } else { "/maven/mvnd/" }
++  $distributionUrl = "$env:MVNW_REPOURL$MVNW_REPO_PATTERN$($distributionUrl -replace '^.*'+$MVNW_REPO_PATTERN,'')"
++}
++$distributionUrlName = $distributionUrl -replace '^.*/',''
++$distributionUrlNameMain = $distributionUrlName -replace '\.[^.]*$','' -replace '-bin$',''
++$MAVEN_HOME_PARENT = "$HOME/.m2/wrapper/dists/$distributionUrlNameMain"
++if ($env:MAVEN_USER_HOME) {
++  $MAVEN_HOME_PARENT = "$env:MAVEN_USER_HOME/wrapper/dists/$distributionUrlNameMain"
++}
++$MAVEN_HOME_NAME = ([System.Security.Cryptography.MD5]::Create().ComputeHash([byte[]][char[]]$distributionUrl) | ForEach-Object {$_.ToString("x2")}) -join ''
++$MAVEN_HOME = "$MAVEN_HOME_PARENT/$MAVEN_HOME_NAME"
++
++if (Test-Path -Path "$MAVEN_HOME" -PathType Container) {
++  Write-Verbose "found existing MAVEN_HOME at $MAVEN_HOME"
++  Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
++  exit $?
++}
++
++if (! $distributionUrlNameMain -or ($distributionUrlName -eq $distributionUrlNameMain)) {
++  Write-Error "distributionUrl is not valid, must end with *-bin.zip, but found $distributionUrl"
++}
++
++# prepare tmp dir
++$TMP_DOWNLOAD_DIR_HOLDER = New-TemporaryFile
++$TMP_DOWNLOAD_DIR = New-Item -Itemtype Directory -Path "$TMP_DOWNLOAD_DIR_HOLDER.dir"
++$TMP_DOWNLOAD_DIR_HOLDER.Delete() | Out-Null
++trap {
++  if ($TMP_DOWNLOAD_DIR.Exists) {
++    try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
++    catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
++  }
++}
++
++New-Item -Itemtype Directory -Path "$MAVEN_HOME_PARENT" -Force | Out-Null
++
++# Download and Install Apache Maven
++Write-Verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
++Write-Verbose "Downloading from: $distributionUrl"
++Write-Verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
++
++$webclient = New-Object System.Net.WebClient
++if ($env:MVNW_USERNAME -and $env:MVNW_PASSWORD) {
++  $webclient.Credentials = New-Object System.Net.NetworkCredential($env:MVNW_USERNAME, $env:MVNW_PASSWORD)
++}
++[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
++$webclient.DownloadFile($distributionUrl, "$TMP_DOWNLOAD_DIR/$distributionUrlName") | Out-Null
++
++# If specified, validate the SHA-256 sum of the Maven distribution zip file
++$distributionSha256Sum = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionSha256Sum
++if ($distributionSha256Sum) {
++  if ($USE_MVND) {
++    Write-Error "Checksum validation is not supported for maven-mvnd. `nPlease disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties."
++  }
++  Import-Module $PSHOME\Modules\Microsoft.PowerShell.Utility -Function Get-FileHash
++  if ((Get-FileHash "$TMP_DOWNLOAD_DIR/$distributionUrlName" -Algorithm SHA256).Hash.ToLower() -ne $distributionSha256Sum) {
++    Write-Error "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised. If you updated your Maven version, you need to update the specified distributionSha256Sum property."
++  }
++}
++
++# unzip and move
++Expand-Archive "$TMP_DOWNLOAD_DIR/$distributionUrlName" -DestinationPath "$TMP_DOWNLOAD_DIR" | Out-Null
++Rename-Item -Path "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" -NewName $MAVEN_HOME_NAME | Out-Null
++try {
++  Move-Item -Path "$TMP_DOWNLOAD_DIR/$MAVEN_HOME_NAME" -Destination $MAVEN_HOME_PARENT | Out-Null
++} catch {
++  if (! (Test-Path -Path "$MAVEN_HOME" -PathType Container)) {
++    Write-Error "fail to move MAVEN_HOME"
++  }
++} finally {
++  try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
++  catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
++}
++
++Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
+diff --git a/todo-app/pom.xml b/todo-app/pom.xml
+new file mode 100644
+index 0000000..5c43f9b
+--- /dev/null
++++ b/todo-app/pom.xml
+@@ -0,0 +1,137 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++    <modelVersion>4.0.0</modelVersion>
++    <parent>
++        <groupId>org.springframework.boot</groupId>
++        <artifactId>spring-boot-starter-parent</artifactId>
++        <version>3.5.5</version>
++        <relativePath/> </parent>
++    <groupId>com.balza</groupId>
++    <artifactId>todo-app</artifactId>
++    <version>0.0.1-SNAPSHOT</version>
++    <name>todo-app</name>
++    <description>todo-app</description>
++    <url/>
++    <licenses>
++        <license/>
++    </licenses>
++    <developers>
++        <developer/>
++    </developers>
++    <scm>
++        <connection/>
++        <developerConnection/>
++        <tag/>
++        <url/>
++    </scm>
++    <properties>
++        <java.version>17</java.version>
++        <mapstruct.version>1.5.5.Final</mapstruct.version>
++        <lombok.version>1.18.38</lombok.version>
++        <spring-cloud.version>2025.0.0</spring-cloud.version>
++    </properties>
++    <dependencyManagement>
++        <dependencies>
++            <dependency>
++                <groupId>org.springframework.cloud</groupId>
++                <artifactId>spring-cloud-dependencies</artifactId>
++                <version>${spring-cloud.version}</version>
++                <type>pom</type>
++                <scope>import</scope>
++            </dependency>
++        </dependencies>
++    </dependencyManagement>
++    <dependencies>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-jpa</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-validation</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-web</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.liquibase</groupId>
++            <artifactId>liquibase-core</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.postgresql</groupId>
++            <artifactId>postgresql</artifactId>
++            <scope>runtime</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.projectlombok</groupId>
++            <artifactId>lombok</artifactId>
++            <version>${lombok.version}</version>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.mapstruct</groupId>
++            <artifactId>mapstruct</artifactId>
++            <version>${mapstruct.version}</version>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-test</artifactId>
++            <scope>test</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.kafka</groupId>
++            <artifactId>spring-kafka</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.cloud</groupId>
++            <artifactId>spring-cloud-starter-openfeign</artifactId>
++        </dependency>
++
++    </dependencies>
++
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.apache.maven.plugins</groupId>
++                <artifactId>maven-compiler-plugin</artifactId>
++                <version>3.11.0</version>
++                <configuration>
++                    <source>${java.version}</source>
++                    <target>${java.version}</target>
++                    <annotationProcessorPaths>
++                        <path>
++                            <groupId>org.mapstruct</groupId>
++                            <artifactId>mapstruct-processor</artifactId>
++                            <version>${mapstruct.version}</version>
++                        </path>
++                        <path>
++                            <groupId>org.projectlombok</groupId>
++                            <artifactId>lombok</artifactId>
++                            <version>${lombok.version}</version>
++                        </path>
++                        <path>
++                            <groupId>org.projectlombok</groupId>
++                            <artifactId>lombok-mapstruct-binding</artifactId>
++                            <version>0.2.0</version>
++                        </path>
++                    </annotationProcessorPaths>
++                </configuration>
++            </plugin>
++            <plugin>
++                <groupId>org.springframework.boot</groupId>
++                <artifactId>spring-boot-maven-plugin</artifactId>
++                <configuration>
++                    <excludes>
++                        <exclude>
++                            <groupId>org.projectlombok</groupId>
++                            <artifactId>lombok</artifactId>
++                        </exclude>
++                    </excludes>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++
++</project>
+\ No newline at end of file
+diff --git a/todo-app/src/main/java/com/balza/todoapp/TodoAppApplication.java b/todo-app/src/main/java/com/balza/todoapp/TodoAppApplication.java
+new file mode 100644
+index 0000000..5e15105
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/TodoAppApplication.java
+@@ -0,0 +1,15 @@
++package com.balza.todoapp;
++
++import org.springframework.boot.SpringApplication;
++import org.springframework.boot.autoconfigure.SpringBootApplication;
++import org.springframework.cloud.openfeign.EnableFeignClients;
++
++@SpringBootApplication
++@EnableFeignClients(basePackages = "com.balza.todoapp.client")
++public class TodoAppApplication {
++
++    public static void main(String[] args) {
++        SpringApplication.run(TodoAppApplication.class, args);
++    }
++
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/client/StatsClient.java b/todo-app/src/main/java/com/balza/todoapp/client/StatsClient.java
+new file mode 100644
+index 0000000..e2c5e11
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/client/StatsClient.java
+@@ -0,0 +1,11 @@
++package com.balza.todoapp.client;
++
++import org.springframework.cloud.openfeign.FeignClient;
++import org.springframework.web.bind.annotation.GetMapping;
++
++@FeignClient(name = "stats-service", url = "http://localhost:8082")
++public interface StatsClient {
++
++    @GetMapping("/api/stats")
++    StatsView getStats();
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/client/StatsView.java b/todo-app/src/main/java/com/balza/todoapp/client/StatsView.java
+new file mode 100644
+index 0000000..de5dd46
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/client/StatsView.java
+@@ -0,0 +1,10 @@
++package com.balza.todoapp.client;
++
++import lombok.Data;
++
++@Data
++public class StatsView {
++    private Long totalTasks;
++    private Long updatedTasks;
++    private Double updatedPercentage;
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/config/AppConfig.java b/todo-app/src/main/java/com/balza/todoapp/config/AppConfig.java
+new file mode 100644
+index 0000000..b28b967
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/config/AppConfig.java
+@@ -0,0 +1,18 @@
++package com.balza.todoapp.config;
++
++import org.springframework.context.MessageSource;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.context.support.ReloadableResourceBundleMessageSource;
++
++@Configuration
++public class AppConfig {
++
++    @Bean
++    public MessageSource messageSource(){
++        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
++        messageSource.setBasename("classpath:messages");
++        messageSource.setDefaultEncoding("UTF-8");
++        return messageSource;
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/config/KafkaProducerConfig.java b/todo-app/src/main/java/com/balza/todoapp/config/KafkaProducerConfig.java
+new file mode 100644
+index 0000000..26c7016
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/config/KafkaProducerConfig.java
+@@ -0,0 +1,38 @@
++package com.balza.todoapp.config;
++
++import com.balza.todoapp.events.TaskUpdatedEvent;
++import org.apache.kafka.clients.producer.ProducerConfig;
++import org.apache.kafka.common.serialization.StringSerializer;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.kafka.core.DefaultKafkaProducerFactory;
++import org.springframework.kafka.core.KafkaTemplate;
++import org.springframework.kafka.core.ProducerFactory;
++import org.springframework.kafka.support.serializer.JsonSerializer;
++
++import java.util.HashMap;
++import java.util.Map;
++
++@Configuration
++public class KafkaProducerConfig {
++
++    @Value("${spring.kafka.bootstrap-servers}")
++    private String bootstrap;
++
++    @Bean
++    public ProducerFactory<String, TaskUpdatedEvent> taskUpdatedProducerFactory() {
++        Map<String, Object> props = new HashMap<>();
++        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
++        props.put(ProducerConfig.ACKS_CONFIG, "all");
++        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
++        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
++        props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false); // чистый JSON
++        return new DefaultKafkaProducerFactory<>(props);
++    }
++
++    @Bean
++    public KafkaTemplate<String, TaskUpdatedEvent> taskUpdatedKafkaTemplate() {
++        return new KafkaTemplate<>(taskUpdatedProducerFactory());
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/controller/StatsController.java b/todo-app/src/main/java/com/balza/todoapp/controller/StatsController.java
+new file mode 100644
+index 0000000..0584f5e
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/controller/StatsController.java
+@@ -0,0 +1,19 @@
++package com.balza.todoapp.controller;
++
++import com.balza.todoapp.client.StatsClient;
++import com.balza.todoapp.client.StatsView;
++import lombok.RequiredArgsConstructor;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequiredArgsConstructor
++public class StatsController {
++
++    private final StatsClient statsClient;
++
++    @GetMapping("/stats/remote")
++    public StatsView getRemoteStats() {
++        return statsClient.getStats();
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/controller/TaskApi.java b/todo-app/src/main/java/com/balza/todoapp/controller/TaskApi.java
+new file mode 100644
+index 0000000..bd9ab64
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/controller/TaskApi.java
+@@ -0,0 +1,39 @@
++package com.balza.todoapp.controller;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.model.Status;
++import jakarta.validation.Valid;
++import org.springframework.data.domain.Page;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.*;
++
++import static com.balza.todoapp.util.RestApiUrls.*;
++
++public interface TaskApi {
++
++    @PostMapping(POST_TASK_PATH)
++    ResponseEntity<TaskResponseDto> createTask(@Valid @RequestBody CreateTaskRequestDto requestDto);
++
++    @GetMapping(GET_TASK_BY_ID_PATH)
++    ResponseEntity<TaskResponseDto> getTaskById(@PathVariable Long id);
++
++    @GetMapping(GET_TASK_PATH)
++    ResponseEntity<Page<TaskResponseDto>> getTasks(
++            @RequestParam(required = false) Status status,
++            @RequestParam(defaultValue = "id") String sortBy,
++            @RequestParam(defaultValue = "asc") String sortOrder,
++            @RequestParam(defaultValue = "0") Integer page,
++            @RequestParam(defaultValue = "10") Integer size
++    );
++
++    @PutMapping(PUT_TASK_PATH)
++    ResponseEntity<TaskResponseDto> updateTask(@Valid @RequestBody UpdateTaskRequestDto requestDto);
++
++    @PatchMapping(PATCH_TASK_PATH)
++    ResponseEntity<TaskResponseDto> updateTaskStatus(@PathVariable Long id, @RequestParam Status status);
++
++    @DeleteMapping(DELETE_TASK_PATH)
++    ResponseEntity<Void> deleteTask(@PathVariable Long id);
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/controller/TaskController.java b/todo-app/src/main/java/com/balza/todoapp/controller/TaskController.java
+new file mode 100644
+index 0000000..f0c3033
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/controller/TaskController.java
+@@ -0,0 +1,72 @@
++package com.balza.todoapp.controller;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.model.Status;
++import com.balza.todoapp.service.TaskService;
++import lombok.RequiredArgsConstructor;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.data.domain.Sort;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++import static com.balza.todoapp.util.RestApiUrls.TASK_API_BASE_PATH;
++
++@RestController
++@RequestMapping(TASK_API_BASE_PATH)
++@RequiredArgsConstructor
++public class TaskController implements TaskApi {
++    private final TaskService taskService;
++
++
++    @Override
++    public ResponseEntity<TaskResponseDto> createTask(CreateTaskRequestDto requestDto) {
++        TaskResponseDto createdTask = taskService.createTask(requestDto);
++        ResponseEntity<TaskResponseDto> response = new ResponseEntity<>(createdTask, HttpStatus.CREATED);
++        return response;
++    }
++
++    @Override
++    public ResponseEntity<TaskResponseDto> getTaskById(Long id) {
++        TaskResponseDto taskDto = taskService.getById(id);
++        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(taskDto);
++        return response;
++    }
++
++    @Override
++    public ResponseEntity<Page<TaskResponseDto>> getTasks(Status status, String sortBy, String sortOrder, Integer page, Integer size) {
++        Sort.Direction direction = "asc".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
++        Sort sort = Sort.by(direction, sortBy);
++        Pageable pageable = PageRequest.of(page, size, sort);
++
++        Page<TaskResponseDto> tasksPage = taskService.getTasks(status, pageable);
++        ResponseEntity<Page<TaskResponseDto>> response = ResponseEntity.ok(tasksPage);
++        return response;
++    }
++
++    @Override
++    public ResponseEntity<TaskResponseDto> updateTask(UpdateTaskRequestDto requestDto) {
++        TaskResponseDto updatedTask = taskService.updateTask(requestDto);
++        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(updatedTask);
++        return response;
++    }
++
++    @Override
++    public ResponseEntity<TaskResponseDto> updateTaskStatus(Long id, Status status) {
++        TaskResponseDto updatedTask = taskService.updateTaskStatus(id, status);
++        ResponseEntity<TaskResponseDto> response = ResponseEntity.ok(updatedTask);
++        return response;
++    }
++
++    @Override
++    public ResponseEntity<Void> deleteTask(Long id) {
++        taskService.deleteById(id);
++        ResponseEntity<Void> response = ResponseEntity.noContent().build();
++        return response;
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/dto/CreateTaskRequestDto.java b/todo-app/src/main/java/com/balza/todoapp/dto/CreateTaskRequestDto.java
+new file mode 100644
+index 0000000..391ff5e
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/dto/CreateTaskRequestDto.java
+@@ -0,0 +1,20 @@
++package com.balza.todoapp.dto;
++
++import com.balza.todoapp.model.Status;
++import jakarta.validation.constraints.FutureOrPresent;
++import jakarta.validation.constraints.NotEmpty;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
++
++import java.time.OffsetDateTime;
++
++public record CreateTaskRequestDto(
++        @NotEmpty(message = "{task.title.notEmpty}")
++        @Size(max = 255, message = "{task.title.size}")
++        String title,
++        String description,
++        @FutureOrPresent(message = "{task.dueDate.futureOrPresent}")
++        OffsetDateTime dueDate,
++        @NotNull(message = "{task.status.notNull}")
++        Status status
++){}
+\ No newline at end of file
+diff --git a/todo-app/src/main/java/com/balza/todoapp/dto/ErrorResponse.java b/todo-app/src/main/java/com/balza/todoapp/dto/ErrorResponse.java
+new file mode 100644
+index 0000000..66555a9
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/dto/ErrorResponse.java
+@@ -0,0 +1,4 @@
++package com.balza.todoapp.dto;
++
++public record ErrorResponse(String message) {
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/dto/TaskResponseDto.java b/todo-app/src/main/java/com/balza/todoapp/dto/TaskResponseDto.java
+new file mode 100644
+index 0000000..c012b4e
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/dto/TaskResponseDto.java
+@@ -0,0 +1,14 @@
++package com.balza.todoapp.dto;
++
++import com.balza.todoapp.model.Status;
++
++import java.time.OffsetDateTime;
++
++public record TaskResponseDto(
++        Long id,
++        String title,
++        String description,
++        OffsetDateTime dueDate,
++        Status status
++) {
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/dto/UpdateTaskRequestDto.java b/todo-app/src/main/java/com/balza/todoapp/dto/UpdateTaskRequestDto.java
+new file mode 100644
+index 0000000..a4fa5c9
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/dto/UpdateTaskRequestDto.java
+@@ -0,0 +1,23 @@
++package com.balza.todoapp.dto;
++
++import com.balza.todoapp.model.Status;
++import jakarta.validation.constraints.FutureOrPresent;
++import jakarta.validation.constraints.NotEmpty;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
++
++import java.time.OffsetDateTime;
++
++public record UpdateTaskRequestDto(
++        @NotNull(message = "{task.id.notNull}")
++        Long id,
++        @NotEmpty(message = "{task.title.notEmpty}")
++        @Size(max = 255, message = "{task.title.size}")
++        String title,
++        String description,
++        @FutureOrPresent(message = "{task.dueDate.futureOrPresent}")
++        OffsetDateTime dueDate,
++        @NotNull(message = "{task.status.notNull}")
++        Status status
++) {
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/dto/ValidationErrorResponse.java b/todo-app/src/main/java/com/balza/todoapp/dto/ValidationErrorResponse.java
+new file mode 100644
+index 0000000..bd1e89d
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/dto/ValidationErrorResponse.java
+@@ -0,0 +1,9 @@
++package com.balza.todoapp.dto;
++
++import java.util.Map;
++
++public record ValidationErrorResponse(
++        String message,
++        Map<String, String> errors
++) {
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/entity/Task.java b/todo-app/src/main/java/com/balza/todoapp/entity/Task.java
+new file mode 100644
+index 0000000..3f87daf
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/entity/Task.java
+@@ -0,0 +1,26 @@
++package com.balza.todoapp.entity;
++
++import com.balza.todoapp.model.Status;
++import jakarta.persistence.*;
++import lombok.*;
++import lombok.experimental.FieldDefaults;
++
++import java.time.OffsetDateTime;
++
++@Entity
++@Table(name = "tasks")
++@NoArgsConstructor
++@AllArgsConstructor
++@Getter
++@Setter
++@FieldDefaults(level = AccessLevel.PRIVATE)
++public class Task {
++    @Id
++    @GeneratedValue(strategy = GenerationType.IDENTITY)
++    Long id;
++    String title;
++    String description;
++    OffsetDateTime dueDate;
++    @Enumerated(EnumType.STRING)
++    Status status;
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/events/TaskEventPublisher.java b/todo-app/src/main/java/com/balza/todoapp/events/TaskEventPublisher.java
+new file mode 100644
+index 0000000..a2bc472
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/events/TaskEventPublisher.java
+@@ -0,0 +1,19 @@
++package com.balza.todoapp.events;
++
++import org.springframework.kafka.core.KafkaTemplate;
++import org.springframework.stereotype.Component;
++
++@Component
++public class TaskEventPublisher {
++    public static final String TOPIC_UPDATED = "task.updated";
++    private final KafkaTemplate<String, TaskUpdatedEvent> template;
++
++    public TaskEventPublisher(KafkaTemplate<String, TaskUpdatedEvent> template) {
++        this.template = template;
++    }
++
++    public void publishUpdated(TaskUpdatedEvent event) {
++        String key = String.valueOf(event.getTaskId());
++        template.send(TOPIC_UPDATED, key, event);
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/events/TaskUpdatedEvent.java b/todo-app/src/main/java/com/balza/todoapp/events/TaskUpdatedEvent.java
+new file mode 100644
+index 0000000..31320d3
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/events/TaskUpdatedEvent.java
+@@ -0,0 +1,34 @@
++package com.balza.todoapp.events;
++
++import lombok.*;
++import java.time.Instant;
++import java.util.Map;
++
++@Data
++@NoArgsConstructor
++@AllArgsConstructor
++@Builder
++public class TaskUpdatedEvent {
++
++    @Builder.Default
++    private String eventType = "TASK_UPDATED";
++
++    private Long taskId;
++    private Long totalTasks;
++
++    @Builder.Default
++    private Instant occurredAt = Instant.now();
++
++    @Builder.Default
++    private String producer = "todo-app";
++
++    @Builder.Default
++    private int version = 1;
++
++    public static TaskUpdatedEvent of(Long taskId, Long totalTasks) {
++        return TaskUpdatedEvent.builder()
++                .taskId(taskId)
++                .totalTasks(totalTasks)
++                .build();
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/exception/TaskNotFoundException.java b/todo-app/src/main/java/com/balza/todoapp/exception/TaskNotFoundException.java
+new file mode 100644
+index 0000000..6ded6df
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/exception/TaskNotFoundException.java
+@@ -0,0 +1,7 @@
++package com.balza.todoapp.exception;
++
++public class TaskNotFoundException extends RuntimeException{
++    public TaskNotFoundException(String message) {
++        super(message);
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/handler/GlobalExceptionHandler.java b/todo-app/src/main/java/com/balza/todoapp/handler/GlobalExceptionHandler.java
+new file mode 100644
+index 0000000..ba1f51e
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/handler/GlobalExceptionHandler.java
+@@ -0,0 +1,36 @@
++package com.balza.todoapp.handler;
++
++import com.balza.todoapp.dto.ErrorResponse;
++import com.balza.todoapp.dto.ValidationErrorResponse;
++import com.balza.todoapp.exception.TaskNotFoundException;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.validation.FieldError;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++
++import java.util.HashMap;
++import java.util.Map;
++
++@RestControllerAdvice
++public class GlobalExceptionHandler {
++
++    @ExceptionHandler(value = {TaskNotFoundException.class})
++    public ResponseEntity<ErrorResponse> handleTaskNotFoundException(TaskNotFoundException ex) {
++        ErrorResponse errorResponse = new ErrorResponse(ex.getMessage());
++        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
++    }
++
++    @ExceptionHandler(MethodArgumentNotValidException.class)
++    public ResponseEntity<ValidationErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
++        Map<String, String> errors = new HashMap<>();
++        ex.getBindingResult().getAllErrors().forEach(error -> {
++            String fieldName = ((FieldError) error).getField();
++            String errorMessage = error.getDefaultMessage();
++            errors.put(fieldName, errorMessage);
++        });
++        ValidationErrorResponse errorResponse = new ValidationErrorResponse("Ошибка валидации", errors);
++        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
++    }
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/mapper/TaskMapper.java b/todo-app/src/main/java/com/balza/todoapp/mapper/TaskMapper.java
+new file mode 100644
+index 0000000..6b3590c
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/mapper/TaskMapper.java
+@@ -0,0 +1,24 @@
++package com.balza.todoapp.mapper;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.entity.Task;
++import org.mapstruct.Mapper;
++import org.mapstruct.Mapping;
++
++@Mapper(componentModel = "spring")
++public interface TaskMapper {
++    @Mapping(source = "id", target = "id")
++    @Mapping(source = "title", target = "title")
++    @Mapping(source = "description", target = "description")
++    @Mapping(source = "dueDate", target = "dueDate")
++    @Mapping(source = "status", target = "status")
++    TaskResponseDto toDto(Task task);
++
++    @Mapping(target = "id", ignore = true)
++    Task toEntity(CreateTaskRequestDto requestDto);
++
++    @Mapping(target = "id", ignore = true)
++    Task toEntity(UpdateTaskRequestDto requestDto);
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/model/Status.java b/todo-app/src/main/java/com/balza/todoapp/model/Status.java
+new file mode 100644
+index 0000000..6172073
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/model/Status.java
+@@ -0,0 +1,7 @@
++package com.balza.todoapp.model;
++
++public enum Status {
++    TODO,
++    IN_PROGRESS,
++    DONE
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/repository/TaskRepository.java b/todo-app/src/main/java/com/balza/todoapp/repository/TaskRepository.java
+new file mode 100644
+index 0000000..5b236ee
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/repository/TaskRepository.java
+@@ -0,0 +1,11 @@
++package com.balza.todoapp.repository;
++
++import com.balza.todoapp.entity.Task;
++import com.balza.todoapp.model.Status;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.data.jpa.repository.JpaRepository;
++
++public interface TaskRepository extends JpaRepository<Task, Long> {
++    Page<Task> findByStatus(Status status, Pageable pageable);
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/service/TaskService.java b/todo-app/src/main/java/com/balza/todoapp/service/TaskService.java
+new file mode 100644
+index 0000000..c86aca3
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/service/TaskService.java
+@@ -0,0 +1,64 @@
++package com.balza.todoapp.service;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.exception.TaskNotFoundException;
++import com.balza.todoapp.model.Status;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++
++public interface TaskService {
++    /**
++     * Создает новую задачу на основе предоставленных данных.
++     *
++     * @param requestDto DTO с данными для создания задачи.
++     * @return DTO созданной задачи.
++     */
++    TaskResponseDto createTask(CreateTaskRequestDto requestDto);
++
++    /**
++     * Обновляет существующую задачу.
++     *
++     * @param requestDto DTO с ID и обновленными данными задачи.
++     * @return DTO обновленной задачи.
++     * @throws TaskNotFoundException если задача с указанным ID не найдена.
++     */
++    TaskResponseDto updateTask(UpdateTaskRequestDto requestDto);
++
++    /**
++     * Обновляет статус существующей задачи.
++     *
++     * @param id     ID задачи для обновления.
++     * @param status Новый статус для задачи.
++     * @return DTO обновленной задачи.
++     * @throws TaskNotFoundException если задача с указанным ID не найдена.
++     */
++    TaskResponseDto updateTaskStatus(Long id, Status status);
++
++    /**
++     * Находит задачу по ее уникальному идентификатору.
++     *
++     * @param id ID искомой задачи.
++     * @return DTO найденной задачи.
++     * @throws TaskNotFoundException если задача с указанным ID не найдена.
++     */
++    TaskResponseDto getById(Long id);
++
++    /**
++     * Удаляет задачу по ее уникальному идентификатору.
++     * Операция идемпотентна: не выбрасывает ошибку, если задача уже удалена.
++     *
++     * @param id ID задачи для удаления.
++     */
++    void deleteById(Long id);
++
++    /**
++     * Возвращает страницу задач с возможностью фильтрации по статусу и сортировки.
++     *
++     * @param status   Статус для фильтрации (может быть null).
++     * @param pageable Объект с параметрами пагинации и сортировки.
++     * @return Страница (Page) с DTO задач.
++     */
++    Page<TaskResponseDto> getTasks(Status status, Pageable pageable);
++}
+diff --git a/todo-app/src/main/java/com/balza/todoapp/service/TaskServiceImpl.java b/todo-app/src/main/java/com/balza/todoapp/service/TaskServiceImpl.java
+new file mode 100644
+index 0000000..546b38d
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/service/TaskServiceImpl.java
+@@ -0,0 +1,120 @@
++package com.balza.todoapp.service;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.entity.Task;
++import com.balza.todoapp.events.TaskEventPublisher;
++import com.balza.todoapp.events.TaskUpdatedEvent;
++import com.balza.todoapp.exception.TaskNotFoundException;
++import com.balza.todoapp.mapper.TaskMapper;
++import com.balza.todoapp.model.Status;
++import com.balza.todoapp.repository.TaskRepository;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.Pageable;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.util.Map;
++
++@Service
++@RequiredArgsConstructor
++@Slf4j
++public class TaskServiceImpl implements TaskService {
++    private final TaskRepository taskRepository;
++    private final TaskMapper taskMapper;
++    private final TaskEventPublisher taskEventPublisher;
++
++    @Override
++    @Transactional
++    public TaskResponseDto createTask(CreateTaskRequestDto requestDto) {
++        log.info("Attempting to create a new task with title: '{}'", requestDto.title());
++        Task taskToSave = taskMapper.toEntity(requestDto);
++        Task savedTask = taskRepository.save(taskToSave);
++        log.info("Successfully created task with id: {}", savedTask.getId());
++        TaskResponseDto dto = taskMapper.toDto(savedTask);
++        return dto;
++    }
++
++
++    @Override
++    @Transactional
++    public TaskResponseDto updateTask(UpdateTaskRequestDto requestDto) {
++        final Long id = requestDto.id();
++        log.info("Attempting to update task with id: {}", id);
++        Task existingTask = taskRepository.findById(id)
++                .orElseThrow(() -> {
++                    log.error("Update failed. Task not found with id: {}", id);
++                    return new TaskNotFoundException("Task not found with id: " + id);
++                });
++
++        existingTask.setTitle(requestDto.title());
++        existingTask.setDescription(requestDto.description());
++        existingTask.setDueDate(requestDto.dueDate());
++        existingTask.setStatus(requestDto.status());
++
++        Task savedTask = taskRepository.save(existingTask);
++        log.info("Successfully updated task with id: {}", savedTask.getId());
++        long totalTasks = taskRepository.count();
++
++        taskEventPublisher.publishUpdated(
++                TaskUpdatedEvent.of(savedTask.getId(), totalTasks)
++        );
++
++        TaskResponseDto dto = taskMapper.toDto(savedTask);
++        return dto;
++    }
++
++    @Override
++    @Transactional
++    public TaskResponseDto updateTaskStatus(Long id, Status status) {
++        log.info("Attempting to update status to {} for task with id: {}", status, id);
++        Task existingTask = taskRepository.findById(id)
++                .orElseThrow(() -> {
++                    log.error("Update status failed. Task not found with id: {}", id);
++                    return new TaskNotFoundException("Task not found with id: " + id);
++                });
++        existingTask.setStatus(status);
++        Task savedTask = taskRepository.save(existingTask);
++        log.info("Successfully updated status for task with id: {}", savedTask.getId());
++        TaskResponseDto dto = taskMapper.toDto(savedTask);
++        return dto;
++    }
++
++    @Override
++    @Transactional(readOnly = true)
++    public TaskResponseDto getById(Long id) {
++        log.info("Fetching task with id: {}", id);
++        TaskResponseDto taskResponseDto = taskRepository.findById(id)
++                .map(taskMapper::toDto)
++                .orElseThrow(() -> {
++                    log.error("Task not found with id: {}", id);
++                    return new TaskNotFoundException("Task not found with id: " + id);
++                });
++        return taskResponseDto;
++    }
++
++    @Override
++    @Transactional
++    public void deleteById(Long id) {
++        log.info("Attempting to delete task with id: {}", id);
++        taskRepository.deleteById(id);
++        log.info("Delete operation called for task with id: {}", id);
++    }
++
++    @Override
++    @Transactional(readOnly = true)
++    public Page<TaskResponseDto> getTasks(Status status, Pageable pageable) {
++        log.info("Fetching tasks with status: [{}] and sortBy: [{}]", status, pageable);
++        Page<Task> taskPage;
++        if (status != null) {
++            taskPage = taskRepository.findByStatus(status, pageable);
++        } else {
++            taskPage = taskRepository.findAll(pageable);
++        }
++        Page<TaskResponseDto> pageDto = taskPage.map(taskMapper::toDto);
++        return pageDto;
++    }
++}
+\ No newline at end of file
+diff --git a/todo-app/src/main/java/com/balza/todoapp/util/RestApiUrls.java b/todo-app/src/main/java/com/balza/todoapp/util/RestApiUrls.java
+new file mode 100644
+index 0000000..87a33e0
+--- /dev/null
++++ b/todo-app/src/main/java/com/balza/todoapp/util/RestApiUrls.java
+@@ -0,0 +1,12 @@
++package com.balza.todoapp.util;
++
++public interface RestApiUrls {
++    String TASK_API_BASE_PATH = "/api/v1";
++    String TASKS_BASE_PATH = "/tasks";
++    String GET_TASK_PATH = TASKS_BASE_PATH;
++    String GET_TASK_BY_ID_PATH = GET_TASK_PATH + "/{id}";
++    String POST_TASK_PATH = TASKS_BASE_PATH;
++    String DELETE_TASK_PATH = TASKS_BASE_PATH + "/{id}";
++    String PUT_TASK_PATH = TASKS_BASE_PATH;
++    String PATCH_TASK_PATH = TASKS_BASE_PATH + "/{id}/status";
++}
+diff --git a/todo-app/src/main/resources/application.yml b/todo-app/src/main/resources/application.yml
+new file mode 100644
+index 0000000..5ff5b44
+--- /dev/null
++++ b/todo-app/src/main/resources/application.yml
+@@ -0,0 +1,14 @@
++spring:
++  application:
++    name: todo-app
++  datasource:
++    url: jdbc:postgresql://localhost:5432/todo_db
++    username: postgres
++    password: 123
++  jpa:
++    hibernate:
++      ddl-auto: validate
++    show-sql: true
++    open-in-view: false
++  kafka:
++    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:29092}
+\ No newline at end of file
+diff --git a/todo-app/src/main/resources/db/changelog/001-create-tasks-table.yaml b/todo-app/src/main/resources/db/changelog/001-create-tasks-table.yaml
+new file mode 100644
+index 0000000..a3865ff
+--- /dev/null
++++ b/todo-app/src/main/resources/db/changelog/001-create-tasks-table.yaml
+@@ -0,0 +1,36 @@
++databaseChangeLog:
++  - changeSet:
++      id: 001-create-tasks-table
++      author: balzasporify
++      preConditions:
++        - onFail: MARK_RAN
++        - not:
++            - tableExists:
++                tablename: tasks
++      changes:
++        - createTable:
++            tableName: tasks
++            columns:
++              - column:
++                  name: id
++                  type: BIGINT
++                  autoIncrement: true
++                  constraints:
++                    primaryKey: true
++                    nullable: false
++              - column:
++                  name: title
++                  type: VARCHAR(255)
++                  constraints:
++                    nullable: false
++              - column:
++                  name: description
++                  type: TEXT
++              - column:
++                  name: due_date
++                  type: TIMESTAMP WITH TIME ZONE
++              - column:
++                  name: status
++                  type: VARCHAR(50)
++                  constraints:
++                    nullable: false
+\ No newline at end of file
+diff --git a/todo-app/src/main/resources/db/changelog/db.changelog-master.yaml b/todo-app/src/main/resources/db/changelog/db.changelog-master.yaml
+new file mode 100644
+index 0000000..8bd852d
+--- /dev/null
++++ b/todo-app/src/main/resources/db/changelog/db.changelog-master.yaml
+@@ -0,0 +1,3 @@
++databaseChangeLog:
++  - include:
++      file: db/changelog/001-create-tasks-table.yaml
+\ No newline at end of file
+diff --git a/todo-app/src/main/resources/messages.properties b/todo-app/src/main/resources/messages.properties
+new file mode 100644
+index 0000000..da52b80
+--- /dev/null
++++ b/todo-app/src/main/resources/messages.properties
+@@ -0,0 +1,5 @@
++task.title.notEmpty=\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C \u043F\u0443\u0441\u0442\u044B\u043C
++task.title.size=\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u0434\u043B\u0438\u043D\u043D\u043E\u0435
++task.dueDate.futureOrPresent=\u0421\u0440\u043E\u043A \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C \u0432 \u043F\u0440\u043E\u0448\u043B\u043E\u043C
++task.status.notNull=\u0421\u0442\u0430\u0442\u0443\u0441 \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C null
++task.id.notNull=ID \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C null
+\ No newline at end of file
+diff --git a/todo-app/src/test/java/com/balza/todoapp/TodoAppApplicationTests.java b/todo-app/src/test/java/com/balza/todoapp/TodoAppApplicationTests.java
+new file mode 100644
+index 0000000..9e37c5f
+--- /dev/null
++++ b/todo-app/src/test/java/com/balza/todoapp/TodoAppApplicationTests.java
+@@ -0,0 +1,13 @@
++package com.balza.todoapp;
++
++import org.junit.jupiter.api.Test;
++import org.springframework.boot.test.context.SpringBootTest;
++
++@SpringBootTest
++class TodoAppApplicationTests {
++
++    @Test
++    void contextLoads() {
++    }
++
++}
+diff --git a/todo-app/src/test/java/com/balza/todoapp/controller/TaskControllerTest.java b/todo-app/src/test/java/com/balza/todoapp/controller/TaskControllerTest.java
+new file mode 100644
+index 0000000..406bc06
+--- /dev/null
++++ b/todo-app/src/test/java/com/balza/todoapp/controller/TaskControllerTest.java
+@@ -0,0 +1,201 @@
++package com.balza.todoapp.controller;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.exception.TaskNotFoundException;
++import com.balza.todoapp.model.Status;
++import com.balza.todoapp.service.TaskService;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageImpl;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++import org.springframework.http.MediaType;
++import org.springframework.test.web.servlet.MockMvc;
++
++import java.time.OffsetDateTime;
++import java.util.Collections;
++import java.util.List;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++@WebMvcTest(TaskController.class)
++@DisplayName("Тесты для TaskController")
++class TaskControllerTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @Autowired
++    private ObjectMapper objectMapper;
++
++    @MockBean
++    private TaskService taskService;
++
++    private final OffsetDateTime testInstant = OffsetDateTime.parse("2025-09-10T10:00:00Z");
++
++    /**
++     * Тест для POST /api/v1/tasks.
++     * Проверяет успешное создание задачи и возврат статуса 201 Created.
++     */
++    @Test
++    @DisplayName("POST /api/v1/tasks - Должен создать задачу и вернуть 201 Created")
++    void createTaskWhenValidRequestThenReturn201() throws Exception {
++        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Description", testInstant, Status.TODO);
++        TaskResponseDto responseDto = new TaskResponseDto(1L, "New Task", "Description", testInstant, Status.TODO);
++
++        when(taskService.createTask(any(CreateTaskRequestDto.class))).thenReturn(responseDto);
++
++        mockMvc.perform(post("/api/v1/tasks")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(objectMapper.writeValueAsString(requestDto)))
++                .andExpect(status().isCreated())
++                .andExpect(jsonPath("$.id").value(1L))
++                .andExpect(jsonPath("$.title").value("New Task"));
++    }
++
++    /**
++     * Тест для POST /api/v1/tasks с невалидными данными.
++     * Проверяет, что при невалидном DTO возвращается статус 400 Bad Request.
++     */
++    @Test
++    @DisplayName("POST /api/v1/tasks - Должен вернуть 400 Bad Request при невалидном DTO")
++    void createTaskWhenInvalidRequestThenReturn400() throws Exception {
++        CreateTaskRequestDto requestDtoWithEmptyTitle = new CreateTaskRequestDto("", "Description", null, Status.TODO);
++
++        mockMvc.perform(post("/api/v1/tasks")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(objectMapper.writeValueAsString(requestDtoWithEmptyTitle)))
++                .andExpect(status().isBadRequest());
++    }
++
++    /**
++     * Тест для GET /api/v1/tasks/{id}.
++     * Проверяет успешное получение задачи по ID.
++     */
++    @Test
++    @DisplayName("GET /api/v1/tasks/{id} - Должен вернуть задачу, если она существует")
++    void getTaskByIdWhenExistsShouldReturnTask() throws Exception {
++        long taskId = 1L;
++        TaskResponseDto responseDto = new TaskResponseDto(taskId, "Test Task", "Desc", testInstant, Status.TODO);
++        when(taskService.getById(taskId)).thenReturn(responseDto);
++
++        mockMvc.perform(get("/api/v1/tasks/{id}", taskId))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.id").value(taskId))
++                .andExpect(jsonPath("$.title").value("Test Task"));
++    }
++
++    /**
++     * Тест для GET /api/v1/tasks/{id} для несуществующей задачи.
++     * Проверяет, что возвращается статус 404 Not Found.
++     */
++    @Test
++    @DisplayName("GET /api/v1/tasks/{id} - Должен вернуть 404, если задача не найдена")
++    void getTaskByIdWhenNotFoundShouldReturn404() throws Exception {
++        long taskId = 99L;
++        when(taskService.getById(taskId)).thenThrow(new TaskNotFoundException("Task not found"));
++
++        mockMvc.perform(get("/api/v1/tasks/{id}", taskId))
++                .andExpect(status().isNotFound());
++    }
++
++    /**
++     * Тест для GET /api/v1/tasks.
++     * Проверяет получение списка задач с пагинацией.
++     */
++    @Test
++    @DisplayName("GET /api/v1/tasks - Должен вернуть страницу задач")
++    void getTasksShouldReturnPagedTasks() throws Exception {
++        List<TaskResponseDto> tasks = Collections.singletonList(
++                new TaskResponseDto(1L, "Task 1", "Description 1", testInstant, Status.TODO)
++        );
++        Page<TaskResponseDto> pagedResponse = new PageImpl<>(tasks, PageRequest.of(0, 10), 1);
++
++        when(taskService.getTasks(any(), any(Pageable.class))).thenReturn(pagedResponse);
++
++        mockMvc.perform(get("/api/v1/tasks")
++                        .param("page", "0")
++                        .param("size", "10"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.content[0].title").value("Task 1"));
++    }
++
++    /**
++     * Тест для PUT /api/v1/tasks.
++     * Проверяет успешное обновление задачи.
++     */
++    @Test
++    @DisplayName("PUT /api/v1/tasks - Должен обновить задачу и вернуть 200 OK")
++    void updateTaskWhenValidRequestThenReturn200() throws Exception {
++        long taskId = 1L;
++        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(taskId,"Updated Task", "Updated Description", testInstant, Status.DONE);
++        TaskResponseDto responseDto = new TaskResponseDto(taskId, "Updated Task", "Updated Description", testInstant, Status.DONE);
++
++        when(taskService.updateTask(any(UpdateTaskRequestDto.class))).thenReturn(responseDto);
++
++        mockMvc.perform(put("/api/v1/tasks")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(objectMapper.writeValueAsString(requestDto)))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.title").value("Updated Task"));
++    }
++
++    /**
++     * Тест для PATCH /api/v1/tasks/{id}/status.
++     * Проверяет успешное обновление статуса задачи.
++     */
++    @Test
++    @DisplayName("PATCH /api/v1/tasks/{id}/status - Должен обновить статус и вернуть 200 OK")
++    void updateTaskStatusWhenValidRequestThenReturn200() throws Exception {
++        long taskId = 1L;
++        Status newStatus = Status.IN_PROGRESS;
++        TaskResponseDto responseDto = new TaskResponseDto(taskId, "Task", "Description", testInstant, newStatus);
++
++        when(taskService.updateTaskStatus(eq(taskId), eq(newStatus))).thenReturn(responseDto);
++
++        mockMvc.perform(patch("/api/v1/tasks/{id}/status", taskId)
++                        .param("status", newStatus.toString()))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.status").value(newStatus.toString()));
++    }
++
++    /**
++     * Тест для DELETE /api/v1/tasks/{id}.
++     * Проверяет успешное удаление задачи и возврат статуса 204 No Content.
++     */
++    @Test
++    @DisplayName("DELETE /api/v1/tasks/{id} - Должен вернуть 204 No Content при успешном удалении")
++    void deleteTaskWhenExistsShouldReturn204() throws Exception {
++        long taskId = 1L;
++
++        mockMvc.perform(delete("/api/v1/tasks/{id}", taskId))
++                .andExpect(status().isNoContent());
++    }
++
++    /**
++     * Тест для DELETE /api/v1/tasks/{id} для несуществующей задачи.
++     * Проверяет, что возвращается статус 404 Not Found.
++     */
++    @Test
++    @DisplayName("DELETE /api/v1/tasks/{id} - Должен вернуть 404 при попытке удалить несуществующую задачу")
++    void deleteTaskWhenNotFoundShouldReturn404() throws Exception {
++        long taskId = 99L;
++        doThrow(new TaskNotFoundException("Task not found")).when(taskService).deleteById(taskId);
++
++        mockMvc.perform(delete("/api/v1/tasks/{id}", taskId))
++                .andExpect(status().isNotFound());
++    }
++}
+\ No newline at end of file
+diff --git a/todo-app/src/test/java/com/balza/todoapp/service/TaskServiceImplTest.java b/todo-app/src/test/java/com/balza/todoapp/service/TaskServiceImplTest.java
+new file mode 100644
+index 0000000..e8bd316
+--- /dev/null
++++ b/todo-app/src/test/java/com/balza/todoapp/service/TaskServiceImplTest.java
+@@ -0,0 +1,150 @@
++package com.balza.todoapp.service;
++
++import com.balza.todoapp.dto.CreateTaskRequestDto;
++import com.balza.todoapp.dto.TaskResponseDto;
++import com.balza.todoapp.dto.UpdateTaskRequestDto;
++import com.balza.todoapp.entity.Task;
++import com.balza.todoapp.exception.TaskNotFoundException;
++import com.balza.todoapp.mapper.TaskMapper;
++import com.balza.todoapp.model.Status;
++import com.balza.todoapp.repository.TaskRepository;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.InjectMocks;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.springframework.data.domain.Page;
++import org.springframework.data.domain.PageImpl;
++import org.springframework.data.domain.PageRequest;
++import org.springframework.data.domain.Pageable;
++
++import java.time.OffsetDateTime;
++import java.util.Collections;
++import java.util.Optional;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++import static org.mockito.Mockito.*;
++
++@ExtendWith(MockitoExtension.class)
++@DisplayName("Тесты для TaskServiceImpl")
++class TaskServiceImplTest {
++
++    @Mock
++    private TaskRepository taskRepository;
++
++    @Mock
++    private TaskMapper taskMapper;
++
++    @InjectMocks
++    private TaskServiceImpl taskService;
++
++    private final OffsetDateTime testInstant = OffsetDateTime.parse("2025-09-10T10:00:00Z");
++
++    @Test
++    @DisplayName("Должен возвращать задачу по ID, если она существует")
++    void getByIdWhenTaskExistsThenReturnsTask() {
++        long taskId = 1L;
++        Task task = new Task(taskId, "Test Title", "Test Desc", testInstant, Status.TODO);
++        TaskResponseDto expectedDto = new TaskResponseDto(taskId, "Test Title", "Test Desc", testInstant, Status.TODO);
++
++        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
++        when(taskMapper.toDto(task)).thenReturn(expectedDto);
++
++        TaskResponseDto actualDto = taskService.getById(taskId);
++
++        assertThat(actualDto).isEqualTo(expectedDto);
++        verify(taskRepository).findById(taskId);
++        verify(taskMapper).toDto(task);
++    }
++
++    @Test
++    @DisplayName("Должен выбрасывать исключение TaskNotFoundException, если задача по ID не найдена")
++    void getByIdWhenTaskNotFoundThenThrowsException() {
++        long taskId = 99L;
++        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
++
++        assertThrows(TaskNotFoundException.class, () -> taskService.getById(taskId));
++        verify(taskRepository).findById(taskId);
++        verifyNoInteractions(taskMapper);
++    }
++
++    @Test
++    @DisplayName("Должен успешно создавать и возвращать новую задачу")
++    void createTaskShouldSaveAndReturnTask() {
++        CreateTaskRequestDto requestDto = new CreateTaskRequestDto("New Task", "Desc", testInstant, Status.TODO);
++        Task taskToSave = new Task(null, "New Task", "Desc", testInstant, Status.TODO);
++        Task savedTask = new Task(1L, "New Task", "Desc", testInstant, Status.TODO);
++        TaskResponseDto expectedDto = new TaskResponseDto(1L, "New Task", "Desc", testInstant, Status.TODO);
++
++        when(taskMapper.toEntity(requestDto)).thenReturn(taskToSave);
++        when(taskRepository.save(taskToSave)).thenReturn(savedTask);
++        when(taskMapper.toDto(savedTask)).thenReturn(expectedDto);
++
++        TaskResponseDto actualDto = taskService.createTask(requestDto);
++
++        assertThat(actualDto).isEqualTo(expectedDto);
++        verify(taskRepository).save(taskToSave);
++    }
++
++    @Test
++    @DisplayName("Должен успешно обновлять и возвращать задачу, если она существует")
++    void updateTaskWhenTaskExistsThenUpdatesAndReturnsTask() {
++        long taskId = 1L;
++        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
++        Task existingTask = new Task(taskId, "Old Title", "Old Desc", OffsetDateTime.now(), Status.TODO);
++        Task savedTask = new Task(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
++        TaskResponseDto expectedDto = new TaskResponseDto(taskId, "Updated Title", "Updated Desc", testInstant, Status.DONE);
++
++        when(taskRepository.findById(taskId)).thenReturn(Optional.of(existingTask));
++        when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
++        when(taskMapper.toDto(savedTask)).thenReturn(expectedDto);
++
++        TaskResponseDto actualDto = taskService.updateTask(requestDto);
++
++        verify(taskRepository).save(existingTask);
++        assertThat(actualDto.title()).isEqualTo("Updated Title");
++        assertThat(actualDto.status()).isEqualTo(Status.DONE);
++    }
++
++    @Test
++    @DisplayName("Должен выбрасывать исключение TaskNotFoundException при попытке обновить несуществующую задачу")
++    void updateTaskWhenTaskNotFoundThenThrowsException() {
++        long taskId = 99L;
++        UpdateTaskRequestDto requestDto = new UpdateTaskRequestDto(taskId, "Title", "Desc", testInstant, Status.TODO);
++        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
++
++        assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(requestDto));
++        verify(taskRepository).findById(taskId);
++        verify(taskRepository, never()).save(any(Task.class));
++    }
++
++    @Test
++    @DisplayName("Должен вызывать метод deleteById")
++    void deleteByIdShouldCallDelete() {
++        long taskId = 1L;
++        doNothing().when(taskRepository).deleteById(taskId);
++        taskService.deleteById(taskId);
++        verify(taskRepository).deleteById(taskId);
++    }
++
++    @Test
++    @DisplayName("Должен возвращать страницу задач")
++    void getTasksShouldReturnPagedTasks() {
++        Pageable pageable = PageRequest.of(0, 10);
++        Task task = new Task(1L, "Task 1", "d1", testInstant, Status.TODO);
++        Page<Task> taskPage = new PageImpl<>(Collections.singletonList(task), pageable, 1);
++        TaskResponseDto expectedDto = new TaskResponseDto(1L, "Task 1", "d1", testInstant, Status.TODO);
++
++        when(taskRepository.findAll(pageable)).thenReturn(taskPage);
++        when(taskMapper.toDto(task)).thenReturn(expectedDto);
++
++        Page<TaskResponseDto> actualPage = taskService.getTasks(null, pageable);
++
++        assertThat(actualPage.getContent()).hasSize(1);
++        assertThat(actualPage.getContent().get(0)).isEqualTo(expectedDto);
++        verify(taskRepository).findAll(pageable);
++        verify(taskMapper).toDto(task);
++    }
++}
+\ No newline at end of file
