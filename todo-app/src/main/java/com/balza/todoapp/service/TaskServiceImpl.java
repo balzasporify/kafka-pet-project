@@ -50,13 +50,6 @@ public class TaskServiceImpl implements TaskService {
                     return new TaskNotFoundException("Task not found with id: " + id);
                 });
 
-        Map<String, Object> prev = Map.of(
-                "title", existingTask.getTitle(),
-                "decription", existingTask.getDescription(),
-                "dueDate", existingTask.getDueDate(),
-                "status", existingTask.getStatus()
-        );
-
         existingTask.setTitle(requestDto.title());
         existingTask.setDescription(requestDto.description());
         existingTask.setDueDate(requestDto.dueDate());
@@ -65,14 +58,9 @@ public class TaskServiceImpl implements TaskService {
         Task savedTask = taskRepository.save(existingTask);
         log.info("Successfully updated task with id: {}", savedTask.getId());
         long totalTasks = taskRepository.count();
-        Map<String, Object> curr = Map.of(
-                "title", savedTask.getTitle(),
-                "description", savedTask.getDescription(),
-                "dueDate", savedTask.getDueDate(),
-                "status", savedTask.getStatus()
-        );
+
         taskEventPublisher.publishUpdated(
-                TaskUpdatedEvent.of(savedTask.getId(), totalTasks, prev, curr)
+                TaskUpdatedEvent.of(savedTask.getId(), totalTasks)
         );
 
         TaskResponseDto dto = taskMapper.toDto(savedTask);

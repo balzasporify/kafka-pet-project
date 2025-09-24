@@ -15,8 +15,6 @@ public class TaskUpdatedEvent {
 
     private Long taskId;
     private Long totalTasks;
-    private Map<String, Object> prev;
-    private Map<String, Object> curr;
 
     @Builder.Default
     private Instant occurredAt = Instant.now();
@@ -27,12 +25,10 @@ public class TaskUpdatedEvent {
     @Builder.Default
     private int version = 1;
 
-    public static TaskUpdatedEvent of(Long taskId, Long totalTasks, Map<String, Object> prev, Map<String, Object> curr) {
+    public static TaskUpdatedEvent of(Long taskId, Long totalTasks) {
         return TaskUpdatedEvent.builder()
                 .taskId(taskId)
                 .totalTasks(totalTasks)
-                .prev(prev)
-                .curr(curr)
                 .build();
     }
 }
