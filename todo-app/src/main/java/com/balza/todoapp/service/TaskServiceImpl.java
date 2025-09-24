@@ -64,7 +64,7 @@ public class TaskServiceImpl implements TaskService {
 
         Task savedTask = taskRepository.save(existingTask);
         log.info("Successfully updated task with id: {}", savedTask.getId());
-
+        long totalTasks = taskRepository.count();
         Map<String, Object> curr = Map.of(
                 "title", savedTask.getTitle(),
                 "description", savedTask.getDescription(),
@@ -72,7 +72,7 @@ public class TaskServiceImpl implements TaskService {
                 "status", savedTask.getStatus()
         );
         taskEventPublisher.publishUpdated(
-                TaskUpdatedEvent.of(savedTask.getId(), prev, curr)
+                TaskUpdatedEvent.of(savedTask.getId(), totalTasks, prev, curr)
         );
 
         TaskResponseDto dto = taskMapper.toDto(savedTask);

@@ -10,4 +10,5 @@ import java.time.Instant;
 public class TaskUpdatedEvent {
     private Long taskId;
     private Instant occurredAt;
+    private Long totalTasks;
 }
